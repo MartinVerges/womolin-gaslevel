@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="css/simple.min.css">
+    <style>
+      .overlay {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.5);
+        transition: opacity 200ms;
+        visibility: hidden;
+        opacity: 0;
+      }
+
+      .overlay .cancel {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        cursor: default;
+      }
+
+      .overlay:target {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      .modal {
+        margin: 100px auto;
+        padding: 20px;
+        background: #fff;
+        border: 1px solid #666;
+        width: 300px;
+        border-radius:6px;
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+        position: relative;
+      }
+
+      .modal h2 {
+        margin-top: 0;
+      }
+
+      .modal .close {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        top: 20px;
+        right: 20px;
+        opacity: 0.8;
+        transition: all 200ms;
+        font-size: 24px;
+        font-weight: bold;
+        text-decoration: none;
+        color: #777;
+      }
+      .modal .close:hover {
+        opacity: 1;
+      }
+      .modal .content {
+        max-height: 400px;
+        overflow: auto;
+      }
+      .modal p {
+        margin: 0 0 1em;
+        text-align: center;
+      }
+      .modal p:last-child {
+        margin: 0;
+      }
+    </style>
+    <title>Gas Scale - Setup</title>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/">State</a>
+        <a href="/config.html">Config</a>
+        <a href="/setup.html">Setup</a>
+        <a href="/update">Update</a>
+      </nav>
+    </header>
+    <main>
+      <div id="beginSetup">
+        <h2>Setup for gas scales</h2>
+        <p>We have to calibrate the scale in order to use it propperly.</p>
+      </div>
+      <div id="step1">
+        <p>Select your scale:
+          <select id="scale">
+          </select>
+        </p>
+        <h2>Empty the scale and continue</h2>
+        <p>Please make sure that your scale is free of objects and has been set up safely and stably.</p>
+        <button type="button" id="emptyscale">Continue</button>
+      </div>
+      <div id="step2" style="display: none;">
+        <h2>Place a well known weight on the scale</h2>
+        <p>You should now place a relatively heavy object, whose exact weight you know, on the scale.
+          If necessary, you can measure it in advance with another scale.</p>
+          <form>
+            <p>
+              <label>Weight in gramms</label><br>
+              <input type="number" id="weight" value="">
+            </p>
+            <button type="button" id="btn-finish">Finish</button>
+          </form>
+      </div>
+      <div id="modal" class="overlay">
+        <a class="cancel" href="#"></a>
+        <div class="modal">
+          <h2 id="modaltitel"></h2>
+          <div class="content">
+            <p id="modaltext"></p>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer>
+      <p>
+        <a href="https://github.com/MartinVerges/rv-smart-gas-scale" target="_blank">rv-smart-gas-scale</a> (c) 2022 by Martin Verges
+      </p>
+    </footer>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>
+      var numScales = 0;
+      $.getJSON("/api/num/levels", function(j) {
+        numScales = j.num;
+        for (let i = 0; i < j.num; i++) {
+          $("#scale").append($("<option />").val(i+1).text(i+1 + ". Scale"));
+        }
+      });
+
+      $("#emptyscale").click(function() {
+        $.ajax("/api/setup/empty?scale="+$("#scale").val(), {
+          type : 'POST',
+          dataType : "json",
+          contentType : 'application/json',
+          success : function(data, status, jqXHR) { // success callback
+            $("#step1").hide();
+            $("#step2").show();
+          },
+          error : errorSendFun,
+          fail : errorSendFun
+        });
+      });
+      
+      var errorSendFun = function() {
+            $("#modaltitel").html("Error");
+            $("#modaltext").html("Unfortunately, it was not possible to complete the setup successfully. Please try again!");
+            window.location.href='#modal'
+          }
+      $("#btn-finish").click(function() {
+        $.ajax("/api/setup/weight?scale=" + $("#scale").val(), {
+          type : 'POST',
+          data : JSON.stringify({
+            weight: parseInt($("#weight").val())
+          }),
+          dataType : "json",
+          contentType : 'application/json',
+          success : function(data, status, jqXHR) { // success callback
+            $(location).prop('href', '/')
+          },
+          error : errorSendFun,
+          fail : errorSendFun
+        });
+      });
+      
+      if (!!window.EventSource) {
+        var source = new EventSource('/events');
+
+        source.addEventListener('open', function(e) {
+          console.log("Events Connected");
+        }, false);
+
+        source.addEventListener('error', function(e) {
+          if (e.target.readyState != EventSource.OPEN) {
+            console.log("Events Disconnected");
+          }
+        }, false);
+      }
+    </script>
+  </body>
+</html>
