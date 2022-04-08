@@ -50,11 +50,13 @@ bool SCALEMANAGER::writeToNVS() {
 }
 
 bool SCALEMANAGER::isConfigured() {
-  return scale > 0 && tare > 0;
+  //return true;
+  return scale != 1.f && tare != 0;
 }
 
 void SCALEMANAGER::begin(uint8_t dout, uint8_t pd_sck, String nvs) {
   hx711.begin(dout, pd_sck, 64);
+  hx711.set_gain(128);
 
   NVS = nvs;
   if (!preferences.begin(NVS.c_str(), false)) {
@@ -72,7 +74,8 @@ void SCALEMANAGER::begin(uint8_t dout, uint8_t pd_sck, String nvs) {
 int SCALEMANAGER::getSensorMedianValue(bool cached) {
   if (cached) return lastMedian;
   if (hx711.wait_ready_retry(100, 5)) {
-    lastMedian = (int)floor(hx711.get_median_value(10) / 1000);
+    //lastMedian = (int)floor(hx711.get_median_value(10) / 1000);
+    lastMedian = hx711.get_units(10);
     return lastMedian;
   } else {
     Serial.println("Unable to communicate with the HX711 modul.");
@@ -87,8 +90,10 @@ int SCALEMANAGER::getCalculatedPercentage(bool cached) {
   } else if (!cached) {
     val = (val * 10 + getSensorMedianValue(false)) / 11;
   }
-  // FIXME: need to provide the % value
-  return 0;
+  int pct = (int)((val - 5500.f) / 11500.f * 100);
+  if (pct < 0) return 0;
+  if (pct > 100) return 100;
+  return pct;
 }
 
 void SCALEMANAGER::emptyScale() {

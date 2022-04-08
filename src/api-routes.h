@@ -202,7 +202,7 @@ void APIRegisterRoutes() {
     String output;
     StaticJsonDocument<512> doc;
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
-      doc["level"+i] = LevelManagers[i]->getCalculatedPercentage(true);
+      doc[String("level")+String(i)] = LevelManagers[i]->getCalculatedPercentage(true);
     }
     serializeJson(doc, output);
     request->send(200, "application/json", output);
