@@ -24,8 +24,6 @@
 #include <Arduino.h>
 #include <AsyncElegantOTA.h>
 #include <AsyncTCP.h>
-#include <esp_wifi.h>
-#include <WiFi.h>
 #include <Preferences.h>
 #include <ESPmDNS.h>
 
