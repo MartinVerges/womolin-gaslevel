@@ -25,9 +25,9 @@
 #include <AsyncElegantOTA.h>
 #include <AsyncTCP.h>
 #include <esp_wifi.h>
-#include <ESPAsync_WiFiManager.h>
 #include <WiFi.h>
 #include <Preferences.h>
+#include <ESPmDNS.h>
 
 // Power Management
 #include <driver/rtc_io.h>
@@ -38,7 +38,6 @@ extern "C" {
 }
 
 #include "global.h"
-#include "wifi-events.h"
 #include "api-routes.h"
 #include "ble.h"
 #include "dac.h"
@@ -101,6 +100,32 @@ uint64_t runtime() {
   return rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get()) / 1000;
 }
 
+void MDNSBegin(String hostname) {
+  if (!enableWifi) return;
+  Serial.println("[MDNS] Starting mDNS Service!");
+  MDNS.begin(hostname.c_str());
+  MDNS.addService("http", "tcp", 80);
+}
+
+void initWifiAndServices() {
+  Serial.println(F("[DEBUG] calling initWifiAndServices()"));
+
+  // Load well known Wifi AP credentials from NVS
+  WifiManager.startBackgroundTask();
+  WifiManager.attachWebServer(&webServer);
+  WifiManager.fallbackToSoftAp(preferences.getBool("enableSoftAp", true));
+
+  APIRegisterRoutes();
+  AsyncElegantOTA.begin(&webServer);
+  webServer.begin();
+  Serial.println(F("[WEB] HTTP server started"));
+
+  MDNSBegin(hostName);
+
+  if (enableMqtt) Mqtt.prepare();
+  else Serial.println(F("[MQTT] Publish to MQTT is disabled."));
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
@@ -147,85 +172,34 @@ void setup() {
     }
   }
   
-  if (!enableWifi && !startWifiConfigPortal) {
-    Serial.println(F("[WIFI] Not starting WiFi!"));
-  } else {
-    WiFiRegisterEvents(WiFi);
-
-    Serial.print(F("[WIFI] Starting Async_AutoConnect_ESP32_minimal on "));
-    Serial.println(ARDUINO_BOARD);
-    Serial.print(F("[WIFI] "));
-    Serial.println(ESP_ASYNC_WIFIMANAGER_VERSION);
-
-    ESPAsync_WiFiManager wifiManager(&webServer, &dnsServer, hostName.c_str());
-    if (!startWifiConfigPortal && wifiManager.WiFi_SSID() == "") {
-      Serial.println(F("[WIFI] No AP credentials found, requesting Wifi configuration portal!"));
-      startWifiConfigPortal = true;
-    }
-    if (startWifiConfigPortal) {
-      String apName = "ESP_";
-      apName += String((uint32_t)ESP.getEfuseMac(), HEX);
-      apName.toUpperCase();
-      Serial.printf("[WIFI] Starting configuration portal on AP SSID %s\n", apName.c_str());
-      wifiManager.setConfigPortalTimeout(0);
-      wifiManager.startConfigPortal(apName.c_str(), NULL);
-      startWifiConfigPortal = false;
-    } else {
-      wifiManager.autoConnect();
-    }
-    APIRegisterRoutes();
-    AsyncElegantOTA.begin(&webServer);
-    webServer.begin();
-    Serial.println(F("[WEB] HTTP server started"));
-
-    WiFi.setAutoReconnect(true);
-    MDNSBegin(hostName);
-  } // end wifi
+  if (enableWifi) initWifiAndServices();
+  else Serial.println(F("[WIFI] Not starting WiFi!"));
 
   if (enableBle) createBleServer(hostName);
   else Serial.println(F("[BLE] Bluetooth low energy is disabled."));
-
-  // Only enable Mqtt if Wifi is enabled as well
-  if (enableWifi) {
-    enableMqtt = preferences.getBool("enableMqtt", false);
-    if (!enableMqtt) Serial.println(F("[MQTT] Publish to MQTT is disabled."));
-  }
 }
 
 // Soft reset the ESP to start with setup() again, but without loosing RTC_DATA as it would be with ESP.reset()
 void softReset() {
   if (enableWifi) {
     webServer.end();
-    MDNSEnd();
+    MDNS.end();
     Mqtt.disconnect();
-    WiFi.disconnect();
+    WifiManager.stopWifi();
   }
   esp_sleep_enable_timer_wakeup(1);
   esp_deep_sleep_start();
 }
 
 void loop() {
-  // if WiFi is down, try reconnecting
-  if (enableWifi && runtime() - Timing.lastWifiCheck > Timing.wifiInterval) {
-    Timing.lastWifiCheck = runtime();
-    if (WiFi.getMode() == WIFI_MODE_AP) {
-      Serial.println(F("[WIFI] Something went wrong here, we have an AP but no config portal!"));
-      softReset();
-    }
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.printf("[WIFI][%" PRIu64 "ms] Reconnecting to WiFi...\n", runtime());
-      WiFi.reconnect();
-    }
-  }
   if (button1.pressed) {
     Serial.println(F("[EVENT] Button pressed!"));
     button1.pressed = false;
-    if (!enableWifi) {
-      // if no wifi is currently running, first button press will start it up
-      preferences.putBool("enableWifi", true);
+    if (enableWifi) {
+      // bringt up a SoftAP instead of beeing a client
+      WifiManager.runSoftAP();
     } else {
-      // if wifi is enabled, we start the config portal on next reboot
-      startWifiConfigPortal = true;
+      initWifiAndServices();
     }
     preferences.end();
     softReset();
@@ -234,7 +208,7 @@ void loop() {
   if (runtime() - Timing.lastServiceCheck > Timing.serviceInterval) {
     Timing.lastServiceCheck = runtime();
     // Check if all the services work
-    if (enableWifi && WiFi.status() == WL_CONNECTED) {
+    if (enableWifi && WiFi.status() == WL_CONNECTED && WiFi.getMode() & WIFI_MODE_STA) {
       if (enableMqtt && !Mqtt.isConnected()) Mqtt.connect();
     }
   }
@@ -253,7 +227,7 @@ void loop() {
         if (enableDac) dacValue(i, level);
         if (enableBle) updateBleCharacteristic(level);  // FIXME: need to manage multiple levels
         if (enableMqtt && Mqtt.isReady()) {
-          Mqtt.client.publish((Mqtt.mqttTopic + "/bottle" + String(i+1).c_str()).c_str(), 0, true, String(level).c_str());
+          Mqtt.client.publish((Mqtt.mqttTopic + "/bottle" + String(i+1 ).c_str()).c_str(), 0, true, String(level).c_str());
         }
         Serial.printf("[SENSOR] Current level of %d. scale is %d (raw %d)\n",
           i+1, level, LevelManagers[i]->getSensorMedianValue(true)
