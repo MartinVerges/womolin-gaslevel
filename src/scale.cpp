@@ -145,7 +145,7 @@ void setup() {
   }
 
   for (uint8_t i=0; i < LEVELMANAGERS; i++) {
-    LevelManagers[i]->begin(GPIOSETTINGS[i].dout, GPIOSETTINGS[i].pd_sck, String(NVS_NAMESPACE) + String("s") + String(i));
+    LevelManagers[i]->begin(String(NVS_NAMESPACE) + String("s") + String(i));
   }
   if (!preferences.begin(NVS_NAMESPACE)) {
     preferences.clear();
@@ -225,16 +225,16 @@ void loop() {
         if (enableDac) dacValue(i, level);
         if (enableBle) updateBleCharacteristic(level);  // FIXME: need to manage multiple levels
         if (enableMqtt && Mqtt.isReady()) {
-          Mqtt.client.publish((Mqtt.mqttTopic + "/bottle" + String(i+1 ).c_str()).c_str(), 0, true, String(level).c_str());
+          Mqtt.client.publish((Mqtt.mqttTopic + "/bottle" + String(i+1)).c_str(), 0, true, String(level).c_str());
         }
-        Serial.printf("[SENSOR] Current level of %d. scale is %d (raw %d)\n",
+        Serial.printf("[SENSOR] Current level of %d. sensor is %d (raw %d)\n",
           i+1, level, LevelManagers[i]->getSensorMedianValue(true)
         );
       } else {
         if (enableDac) dacValue(i, 0);
         if (enableBle) updateBleCharacteristic(level);  // FIXME
         level = LevelManagers[i]->getSensorMedianValue();
-        Serial.printf("[SENSOR] Scale %d not configured, please run the setup! Raw sensor value %d\n", i, level);
+        Serial.printf("[SENSOR] Sensor %d not configured, please run the setup! Raw sensor value %d\n", i, level);
       }
     }
   }

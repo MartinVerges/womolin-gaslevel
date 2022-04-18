@@ -37,21 +37,12 @@ RTC_DATA_ATTR struct timing_t {
 
 RTC_DATA_ATTR uint64_t sleepTime = 0;             // Time that the esp32 slept
 
-struct used_pins {
-  uint8_t dout;
-  uint8_t pd_sck;
-};
-
-SCALEMANAGER LevelManager1;
-SCALEMANAGER LevelManager2;
+SCALEMANAGER LevelManager1(32,27);
+SCALEMANAGER LevelManager2(16,17);
 #define LEVELMANAGERS 2
 SCALEMANAGER * LevelManagers[LEVELMANAGERS] = {
   &LevelManager1,
   &LevelManager2
-};
-used_pins GPIOSETTINGS[LEVELMANAGERS] = {
-  {32,27},
-  {16,17}
 };
 
 WIFIMANAGER WifiManager;

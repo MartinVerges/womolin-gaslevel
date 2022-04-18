@@ -26,7 +26,9 @@ typedef struct {
 RTC_DATA_ATTR sensorReadings readingHistory[MAX_RTC_HISTORY];
 RTC_DATA_ATTR int readingHistoryCount = 0;
 
-SCALEMANAGER::SCALEMANAGER() {
+SCALEMANAGER::SCALEMANAGER(uint8_t dout, uint8_t pd_sck) {  
+  hx711.begin(dout, pd_sck, 64);
+  hx711.set_gain(128);
 }
 
 SCALEMANAGER::~SCALEMANAGER() {
@@ -54,10 +56,7 @@ bool SCALEMANAGER::isConfigured() {
   return scale != 1.f && tare != 0;
 }
 
-void SCALEMANAGER::begin(uint8_t dout, uint8_t pd_sck, String nvs) {
-  hx711.begin(dout, pd_sck, 64);
-  hx711.set_gain(128);
-
+void SCALEMANAGER::begin(String nvs) {
   NVS = nvs;
   if (!preferences.begin(NVS.c_str(), false)) {
     Serial.println("Error opening NVS Namespace, giving up...");

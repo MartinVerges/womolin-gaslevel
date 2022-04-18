@@ -31,11 +31,11 @@ class SCALEMANAGER
         bool writeToNVS();
 
 	public:
-		SCALEMANAGER();
+		SCALEMANAGER(uint8_t dout, uint8_t pd_sck);
 		virtual ~SCALEMANAGER();
 
         // Initialize the Webserver
-		void begin(uint8_t dout, uint8_t pd_sck, String nvs);
+		void begin(String nvs);
 
         // Read Median(10) raw value from sensor
         int getSensorMedianValue(bool cached = false);
