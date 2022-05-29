@@ -31,7 +31,7 @@ uint8_t dacValue(uint8_t use_dac, uint8_t percentage) {
     case 1: channel = DAC_CHANNEL_1; break;
     case 2: channel = DAC_CHANNEL_2; break;
     default:
-      Serial.println("[ERROR] DAC Channel not found!");
+      Serial.printf("[ERROR] DAC Channel %d not found!\n", use_dac);
       return -1;
   }
 

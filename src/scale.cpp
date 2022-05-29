@@ -18,8 +18,8 @@
 #if !(defined(ARDUINO_ARCH_ESP32))
   #define ARDUINO_ARCH_ESP32 true
 #endif
-#undef USE_LITTLEFS
-#define USE_LITTLEFS true
+#undef USE_LittleFS
+#define USE_LittleFS true
 
 #include <Arduino.h>
 #include <AsyncElegantOTA.h>
@@ -32,13 +32,24 @@
 #include <esp_sleep.h>
 #include <soc/rtc.h>
 extern "C" {
-  #include <esp_clk.h>
+  #if ESP_ARDUINO_VERSION_MAJOR >= 2
+    #include <esp32/clk.h>
+  #else
+    #include <esp_clk.h>
+  #endif
 }
 
 #include "global.h"
 #include "api-routes.h"
 #include "ble.h"
 #include "dac.h"
+
+
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_BMP085.h>
+Adafruit_BMP085 myBMP;
+
 
 void IRAM_ATTR ISR_button1() {
   button1.pressed = true;
@@ -64,7 +75,6 @@ void sleepOrDelay() {
     rtc_gpio_pulldown_dis(button1.PIN);
     esp_sleep_enable_ext0_wakeup(button1.PIN, 0);
 
-    preferences.end();
     Serial.println(F("[POWER] Sleeping..."));
     esp_deep_sleep_start();
   }
@@ -106,8 +116,6 @@ void MDNSBegin(String hostname) {
 }
 
 void initWifiAndServices() {
-  Serial.println(F("[DEBUG] calling initWifiAndServices()"));
-
   // Load well known Wifi AP credentials from NVS
   WifiManager.startBackgroundTask();
   WifiManager.attachWebServer(&webServer);
@@ -120,7 +128,15 @@ void initWifiAndServices() {
 
   MDNSBegin(hostName);
 
-  if (enableMqtt) Mqtt.prepare();
+  if (enableMqtt) {
+    Mqtt.prepare(
+      preferences.getString("mqttHost", "localhost"),
+      preferences.getUInt("mqttPort", 1883),
+      preferences.getString("mqttTopic", "verges/tanklevel"),
+      preferences.getString("mqttUser", ""),
+      preferences.getString("mqttPass", "")
+    );
+  }
   else Serial.println(F("[MQTT] Publish to MQTT is disabled."));
 }
 
@@ -136,9 +152,12 @@ void setup() {
   pinMode(button1.PIN, INPUT_PULLUP);
   attachInterrupt(button1.PIN, ISR_button1, FALLING);
   Serial.println(F("done"));
-  
-  if (!LITTLEFS.begin(true)) {
-    Serial.println(F("[FS] An Error has occurred while mounting LITTLEFS"));
+
+  Wire.begin((int)SDA, (int)SCL);
+  myBMP.begin(BMP085_ULTRAHIGHRES, &Wire);
+
+  if (!LittleFS.begin(true)) {
+    Serial.println(F("[FS] An Error has occurred while mounting LittleFS"));
     // Reduce power consumption while having issues with NVS
     // This won't fix the problem, a check of the sensor log is required
     deepsleepForSeconds(5);
@@ -151,8 +170,6 @@ void setup() {
     preferences.clear();
   }
 
-  Mqtt.addPreferences(&preferences);
-
   // Load Settings from NVS
   hostName = preferences.getString("hostName");
   if (hostName.isEmpty()) {
@@ -162,6 +179,7 @@ void setup() {
   enableWifi = preferences.getBool("enableWifi", true);
   enableBle = preferences.getBool("enableBle", true);
   enableDac = preferences.getBool("enableDac", true);
+  enableMqtt = preferences.getBool("enableMqtt", false);
 
   for (uint8_t i=0; i < LEVELMANAGERS; i++) {
     if (!LevelManagers[i]->isConfigured()) {
@@ -175,6 +193,8 @@ void setup() {
 
   if (enableBle) createBleServer(hostName);
   else Serial.println(F("[BLE] Bluetooth low energy is disabled."));
+
+  preferences.end();
 }
 
 // Soft reset the ESP to start with setup() again, but without loosing RTC_DATA as it would be with ESP.reset()
@@ -199,7 +219,6 @@ void loop() {
     } else {
       initWifiAndServices();
     }
-    preferences.end();
     softReset();
   }
 
@@ -222,16 +241,25 @@ void loop() {
         level = LevelManagers[i]->getCalculatedPercentage();
         String ident = String("level") + String(i);
         events.send(String(level).c_str(), ident.c_str(), runtime());
-        if (enableDac) dacValue(i, level);
+        if (enableDac) dacValue(i+1, level);
         if (enableBle) updateBleCharacteristic(level);  // FIXME: need to manage multiple levels
         if (enableMqtt && Mqtt.isReady()) {
           Mqtt.client.publish((Mqtt.mqttTopic + "/bottle" + String(i+1)).c_str(), 0, true, String(level).c_str());
+
+          float alt = myBMP.readAltitude();
+
+          Mqtt.client.publish((Mqtt.mqttTopic + "/sensor" + String(i+1)).c_str(), 0, true, String(LevelManagers[i]->getSensorMedianValue(true)).c_str());
+          Mqtt.client.publish((Mqtt.mqttTopic + "/temperature" + String(i+1)).c_str(), 0, true, String(myBMP.readTemperature()).c_str());
+          Mqtt.client.publish((Mqtt.mqttTopic + "/pressure" + String(i+1)).c_str(), 0, true, String(myBMP.readPressure()).c_str());
+          Mqtt.client.publish((Mqtt.mqttTopic + "/sealevelpressure" + String(i+1)).c_str(), 0, true, String(myBMP.readSealevelPressure(alt)).c_str());
+          Mqtt.client.publish((Mqtt.mqttTopic + "/altitude" + String(i+1)).c_str(), 0, true, String(alt).c_str());
+
         }
         Serial.printf("[SENSOR] Current level of %d. sensor is %d (raw %d)\n",
           i+1, level, LevelManagers[i]->getSensorMedianValue(true)
         );
       } else {
-        if (enableDac) dacValue(i, 0);
+        if (enableDac) dacValue(i+1, 0);
         if (enableBle) updateBleCharacteristic(level);  // FIXME
         level = LevelManagers[i]->getSensorMedianValue();
         Serial.printf("[SENSOR] Sensor %d not configured, please run the setup! Raw sensor value %d\n", i, level);

@@ -13,7 +13,11 @@
 #include "scalemanager.h"
 #include <soc/rtc.h>
 extern "C" {
-  #include <esp_clk.h>
+  #if ESP_ARDUINO_VERSION_MAJOR >= 2
+    #include <esp32/clk.h>
+  #else
+    #include <esp_clk.h>
+  #endif
 }
 
 // Store some history in the RTC RAM that survives deep sleep

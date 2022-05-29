@@ -13,8 +13,8 @@
 #include <ESPAsyncWebServer.h>
 #include <FS.h>
 #include <Preferences.h>
-#define SPIFFS LITTLEFS 
-#include <LITTLEFS.h>
+#define SPIFFS LittleFS 
+#include <LittleFS.h>
 #include "MQTTclient.h"
 #include "wifimanager.h"
 
