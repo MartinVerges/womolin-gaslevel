@@ -26,7 +26,7 @@
               </a>
             </li>
             <li>
-              <a href="/calibrate/" class="nav-link {path === '/wifi/' ? 'text-secondary' : 'text-white'}">
+              <a href="/calibrate/" class="nav-link {path === '/calibrate/' ? 'text-secondary' : 'text-white'}">
                 <Fa icon={faScaleBalanced} size="lg" class="bi d-block mx-auto mb-1" />Calibrate
               </a>
             </li>
