@@ -22,7 +22,7 @@
 #include "wifimanager.h"
 
 #define webserverPort 80                    // Start the Webserver on this port
-#define NVS_NAMESPACE "gas-scale"          // Preferences.h namespace to store settings
+#define NVS_NAMESPACE "gaslevel"            // Preferences.h namespace to store settings
 
 RTC_DATA_ATTR struct timing_t {
   // Check Services like MQTT, ...
@@ -32,10 +32,6 @@ RTC_DATA_ATTR struct timing_t {
   // Sensor data in loop()
   uint64_t lastSensorRead = 0;              // last millis() from Sensor read
   const unsigned int sensorInterval = 5000; // Interval in ms to execute code
-
-  // Setup executing in loop()
-  uint64_t lastSetupRead = 0;               // last millis() from Setup run
-  const unsigned int setupInterval = 15 * 60 * 1000 / 255;   // Interval in ms to execute code
 } Timing;
 
 RTC_DATA_ATTR uint64_t sleepTime = 0;             // Time that the esp32 slept

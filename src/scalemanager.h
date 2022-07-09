@@ -21,7 +21,7 @@
 class SCALEMANAGER
 {
 	private:
-        String NVS = "gas-scale";                  // NVS Storage to write and read values
+        String NVS = "gaslevel";                  // NVS Storage to write and read values
 
         int lastMedian = 0;                        // last reading median value
         float scale = 1.f;                         // hx711 scale calibration

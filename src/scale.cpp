@@ -169,12 +169,12 @@ void setup() {
   // Load Settings from NVS
   hostName = preferences.getString("hostName");
   if (hostName.isEmpty()) {
-    hostName = "gas-scale";
+    hostName = "gaslevel";
     preferences.putString("hostName", hostName);
   }
   enableWifi = preferences.getBool("enableWifi", true);
-  enableBle = preferences.getBool("enableBle", true);
-  enableDac = preferences.getBool("enableDac", true);
+  enableBle = preferences.getBool("enableBle", false);
+  enableDac = preferences.getBool("enableDac", false);
   enableMqtt = preferences.getBool("enableMqtt", false);
 
   if (enableWifi) initWifiAndServices();
