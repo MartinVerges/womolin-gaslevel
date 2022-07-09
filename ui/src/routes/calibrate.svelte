@@ -31,6 +31,7 @@
     async function endStep2 () { 
         fetch(`/api/setup/empty?scale=${selectedScale}`, {
 			method: 'POST',
+            body: '{}',
             headers: { "Content-type": "application/json" }
 		}).then(response => {
             if (response.ok) {
