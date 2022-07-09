@@ -1,11 +1,15 @@
 /**
- *
- * Gas Scale
- * https://github.com/MartinVerges/rv-smart-gas-scale
- *
- * (c) 2022 Martin Verges
- *
-**/
+ * @file scale.cpp
+ * @author Martin Verges <martin@veges.cc>
+ * @brief Gas scale to MQTT with WiFi, BLE, and more
+ * @version 0.1
+ * @date 2022-07-09
+ * 
+ * @copyright Copyright (c) 2022 by the author alone
+ *            https://gitlab.womolin.de/martin.verges/gaslevel
+ * 
+ * License: CC BY-NC-SA 4.0
+ */
 
 #if !(defined(ESP32))
   #error This code is intended to run on the ESP32 platform! Please check your Tools->Board setting.
@@ -22,7 +26,6 @@
 #define USE_LittleFS true
 
 #include <Arduino.h>
-#include <AsyncElegantOTA.h>
 #include <AsyncTCP.h>
 #include <Preferences.h>
 #include <ESPmDNS.h>
@@ -43,7 +46,6 @@ extern "C" {
 #include "api-routes.h"
 #include "ble.h"
 #include "dac.h"
-
 
 #include <SPI.h>
 #include <Wire.h>
@@ -108,13 +110,6 @@ uint64_t runtime() {
   return rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get()) / 1000;
 }
 
-void MDNSBegin(String hostname) {
-  if (!enableWifi) return;
-  Serial.println("[MDNS] Starting mDNS Service!");
-  MDNS.begin(hostname.c_str());
-  MDNS.addService("http", "tcp", 80);
-}
-
 void initWifiAndServices() {
   // Load well known Wifi AP credentials from NVS
   WifiManager.startBackgroundTask();
@@ -122,17 +117,20 @@ void initWifiAndServices() {
   WifiManager.fallbackToSoftAp(preferences.getBool("enableSoftAp", true));
 
   APIRegisterRoutes();
-  AsyncElegantOTA.begin(&webServer);
   webServer.begin();
   Serial.println(F("[WEB] HTTP server started"));
 
-  MDNSBegin(hostName);
+  if (enableWifi) {
+    Serial.println("[MDNS] Starting mDNS Service!");
+    MDNS.begin(hostName.c_str());
+    MDNS.addService("http", "tcp", 80);
+  }
 
   if (enableMqtt) {
     Mqtt.prepare(
       preferences.getString("mqttHost", "localhost"),
       preferences.getUInt("mqttPort", 1883),
-      preferences.getString("mqttTopic", "verges/tanklevel"),
+      preferences.getString("mqttTopic", "verges/gaslevel"),
       preferences.getString("mqttUser", ""),
       preferences.getString("mqttPass", "")
     );
@@ -162,14 +160,12 @@ void setup() {
     // This won't fix the problem, a check of the sensor log is required
     deepsleepForSeconds(5);
   }
+  if (!preferences.begin(NVS_NAMESPACE)) preferences.clear();
 
   for (uint8_t i=0; i < LEVELMANAGERS; i++) {
     LevelManagers[i]->begin(String(NVS_NAMESPACE) + String("s") + String(i));
   }
-  if (!preferences.begin(NVS_NAMESPACE)) {
-    preferences.clear();
-  }
-
+  
   // Load Settings from NVS
   hostName = preferences.getString("hostName");
   if (hostName.isEmpty()) {
@@ -181,20 +177,20 @@ void setup() {
   enableDac = preferences.getBool("enableDac", true);
   enableMqtt = preferences.getBool("enableMqtt", false);
 
+  if (enableWifi) initWifiAndServices();
+  else Serial.println(F("[WIFI] Not starting WiFi!"));
+
+  if (enableBle) createBleServer(hostName);
+  else Serial.println(F("[BLE] Bluetooth low energy is disabled."));
+  
+  preferences.end();
+
   for (uint8_t i=0; i < LEVELMANAGERS; i++) {
     if (!LevelManagers[i]->isConfigured()) {
       // we need to bring up WiFi to provide a convenient setup routine
       enableWifi = true;
     }
   }
-  
-  if (enableWifi) initWifiAndServices();
-  else Serial.println(F("[WIFI] Not starting WiFi!"));
-
-  if (enableBle) createBleServer(hostName);
-  else Serial.println(F("[BLE] Bluetooth low energy is disabled."));
-
-  preferences.end();
 }
 
 // Soft reset the ESP to start with setup() again, but without loosing RTC_DATA as it would be with ESP.reset()
@@ -240,7 +236,6 @@ void loop() {
       if (LevelManagers[i]->isConfigured()) {
         level = LevelManagers[i]->getCalculatedPercentage();
         String ident = String("level") + String(i);
-        events.send(String(level).c_str(), ident.c_str(), runtime());
         if (enableDac) dacValue(i+1, level);
         if (enableBle) updateBleCharacteristic(level);  // FIXME: need to manage multiple levels
         if (enableMqtt && Mqtt.isReady()) {
@@ -248,11 +243,11 @@ void loop() {
 
           float alt = myBMP.readAltitude();
 
-          Mqtt.client.publish((Mqtt.mqttTopic + "/sensor" + String(i+1)).c_str(), 0, true, String(LevelManagers[i]->getSensorMedianValue(true)).c_str());
-          Mqtt.client.publish((Mqtt.mqttTopic + "/temperature" + String(i+1)).c_str(), 0, true, String(myBMP.readTemperature()).c_str());
-          Mqtt.client.publish((Mqtt.mqttTopic + "/pressure" + String(i+1)).c_str(), 0, true, String(myBMP.readPressure()).c_str());
-          Mqtt.client.publish((Mqtt.mqttTopic + "/sealevelpressure" + String(i+1)).c_str(), 0, true, String(myBMP.readSealevelPressure(alt)).c_str());
-          Mqtt.client.publish((Mqtt.mqttTopic + "/altitude" + String(i+1)).c_str(), 0, true, String(alt).c_str());
+          Mqtt.client.publish((Mqtt.mqttTopic + "/sensor" + String(i+1)).c_str(), String(LevelManagers[i]->getSensorMedianValue(true)).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/temperature" + String(i+1)).c_str(), String(myBMP.readTemperature()).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/pressure" + String(i+1)).c_str(), String(myBMP.readPressure()).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/sealevelpressure" + String(i+1)).c_str(), String(myBMP.readSealevelPressure(alt)).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/altitude" + String(i+1)).c_str(), String(alt).c_str(), true);
 
         }
         Serial.printf("[SENSOR] Current level of %d. sensor is %d (raw %d)\n",

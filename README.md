@@ -1,4 +1,4 @@
-# rv-smart-gas-scale
+# womolin.gaslevel
 
 DIY project to build a smart fuel sensor for RVs or in other projects.
 It is based on pressure and is able to measure all types of bottles and their weights.
@@ -11,6 +11,10 @@ After I have long found on the market for camping nothing that is on the one han
 
 Thanks to the ESP32 this can be queried in the future directly via WLAN or Bluetooth. 
 
+## Show it to me!
+<img src="images/sensor_with_holder.jpg?raw=true" alt="Sensor with the 3D printed holder" width="30%">
+<img src="images/mounted_plates.jpg?raw=true" alt="Mounted plates to put bottles on" width="30%">
+
 ## Focus of this Project
 
 The following aspects are the focus of this project:
@@ -18,7 +22,7 @@ The following aspects are the focus of this project:
  * Easy to use and rebuild
  * Precise in the evaluation of the data
  * Stand alone usable
- * Usable in all liquids
+ * Usable in all types of bottles
 
 ## BOM - Bill of Materials
 
@@ -29,6 +33,7 @@ To build this sensor yourself, you need:
  * 1x Pushbutton (~0.15€)
  * 1x Small 12V to 3.3V power supply (~1€)
  * 2x Wood/Plasic/Metal plate in the size of your needs
+ * 8x 3D printed sensor holder [CAD](https://cad.onshape.com/documents/3d3042e5cf8f3498753a8372/w/5c6080c6f47943c52b1afecc/e/5ba80aad4182341acda3708c?renderMode=0&uiState=62c9947f0bab70377a474cf9)
  
  In addition you need some few small cables and soldering equipment to build the circuit.
 
@@ -39,7 +44,7 @@ To build this sensor yourself, you need:
 
 ```
     # Change directory into the code folder
-    > cd rv-smart-gas-scale
+    > cd womolin.gaslevel
 
     # Build project
     > platformio run
@@ -51,7 +56,7 @@ To build this sensor yourself, you need:
 ## Operation
 
 When the sensor is started for the first time, a WiFi configuration portal opens via which a connection to the central access point can be established.
-As soon as the connection has been established, the sensor is available on the IP assigned by the DHCP and the hostname [gasscale.local](http://gasscale.local) provided by MDNS.
+As soon as the connection has been established, the sensor is available on the IP assigned by the DHCP and the hostname [gaslevel.local](http://gaslevel.local) provided by MDNS.
 You can now log in to the webobverface and proceed with the sensor setup. 
 
 ## Android Bluetooth Low Energy (BLE) App
@@ -76,31 +81,11 @@ The button on the device switches from Powersave to Wifi Mode.
 When the button is pressed again, the sensor restarts and opens its own access point.
 Here you can correct the WLAN data.
 
-## API to the Sensor
-
-All provided RESTful APIs have been documented using the free [Insomnia software](https://insomnia.rest/).
-You can import the collection file called [Insomnia_api_spec.json](/Insomnia_api_spec.json?raw=true) and find all available API endpoints and run and test them directly.
-
-<img src="images/api.png?raw=true" alt="Insomnia API description" width="40%">
-
-## Alternatives
-
-### Pressure based (like this project)
-
-The only know alternative SuperSense Gas Scale is available at around 259€ for purchase, but the price is extremely high and the data cannot be accessed digitally as it's proprietary.
-
-### Resistance based
-
-There are a lot of cheapest probes which all show only rough and mostly wrong data.
-These are mostly based on measuring the resistance or continuity between two or more conductive rods that come into contact with water.
-
-These probes usually cost more than the components in this project, but are extremely inaccurate, prone to calcification and malfunction.
-
 # License
 
-rv-smart-gas-scale (c) by Martin Verges.
+womolin.gaslevel (c) by Martin Verges.
 
-rv-smart-gas-scale is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
+womolin.gaslevel is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 
 You should have received a copy of the license along with this work.
 If not, see <http://creativecommons.org/licenses/by-nc-sa/4.0/>.

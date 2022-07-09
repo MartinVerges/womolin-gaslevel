@@ -1,11 +1,14 @@
 /**
- *
- * Gas Scale
- * https://github.com/MartinVerges/rv-smart-gas-scale
- *
- * (c) 2022 Martin Verges
- *
-**/
+ * @file api-routes.h
+ * @author Martin Verges <martin@veges.cc>
+ * @version 0.1
+ * @date 2022-07-09
+ * 
+ * @copyright Copyright (c) 2022 by the author alone
+ *            https://gitlab.womolin.de/martin.verges/gaslevel
+ * 
+ * License: CC BY-NC-SA 4.0
+ */
 
 #include <AsyncJson.h>
 #include <ArduinoJson.h>
@@ -69,7 +72,7 @@ void APIRegisterRoutes() {
       preferences.putString("mqttUser", jsonBuffer["mqttuser"].as<String>());
       preferences.putString("mqttPass", jsonBuffer["mqttpass"].as<String>());
       if (preferences.putBool("enableMqtt", jsonBuffer["enablemqtt"].as<boolean>())) {
-        if (enableMqtt) Mqtt.disconnect(true);
+        if (enableMqtt) Mqtt.disconnect();
         enableMqtt = jsonBuffer["enablemqtt"].as<boolean>();
         if (enableMqtt) {
           Mqtt.prepare(
@@ -86,43 +89,6 @@ void APIRegisterRoutes() {
     preferences.end();
 
     request->send(200, "application/json", "{\"message\":\"New hostname stored in NVS, reboot required!\"}");
-  });
-
-  webServer.on("/api/setup/empty", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
-    [&](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
-      
-    if (!request->hasParam("scale")) return request->send(400, "text/plain", "Missing parameter scale");    
-    uint8_t scale = request->getParam("scale")->value().toInt();
-    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "text/plain", "Bad request, value outside available scales");
-
-    // Calibration - empty scale
-    LevelManagers[scale-1]->emptyScale();
-    request->send(200, "application/json", "{\"message\":\"Empty scale calibration done!\"}");
-  });
-
-  webServer.on("/api/setup/weight", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
-    [&](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
-      
-    if (!request->hasParam("scale")) return request->send(400, "text/plain", "Missing parameter scale");    
-    uint8_t scale = request->getParam("scale")->value().toInt();
-    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "text/plain", "Bad request, value outside available scales");
-
-    // Calibration - reference weight
-    DynamicJsonDocument jsonBuffer(64);
-    deserializeJson(jsonBuffer, (const char*)data);
-    if (!jsonBuffer["weight"].is<int>()) return request->send(422, "text/plain", "Invalid data");
-    LevelManagers[scale-1]->setupWeight(jsonBuffer["weight"]);
-    request->send(200, "application/json", "{\"message\":\"Setup completed\"}");
-  });
-
-  webServer.on("/api/setup/empty", HTTP_POST, [&](AsyncWebServerRequest *request) {
-    if (!request->hasParam("scale")) return request->send(400, "text/plain", "Missing parameter scale");    
-    uint8_t scale = request->getParam("scale")->value().toInt();
-    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "text/plain", "Bad request, value outside available scales");
-
-    // Calibration - empty scale
-    LevelManagers[scale-1]->emptyScale();
-    request->send(200, "application/json", "{\"message\":\"Begin calibration success\"}");
   });
 
   webServer.on("/api/config", HTTP_GET, [&](AsyncWebServerRequest *request) {
@@ -152,42 +118,51 @@ void APIRegisterRoutes() {
     } else request->send(415, "text/plain", "Unsupported Media Type");
   });
 
-  webServer.on("/api/rawvalue", HTTP_GET, [&](AsyncWebServerRequest *request) {
+  webServer.on("/api/setup/empty", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
+    [&](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
+      
     if (!request->hasParam("scale")) return request->send(400, "text/plain", "Missing parameter scale");    
     uint8_t scale = request->getParam("scale")->value().toInt();
     if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "text/plain", "Bad request, value outside available scales");
 
-    if (request->contentType() == "application/json") {
-      String output;
-      StaticJsonDocument<16> doc;
-      doc["raw"] = LevelManagers[scale-1]->getSensorMedianValue(true);
-      serializeJson(doc, output);
-      request->send(200, "application/json", output);
-    } else request->send(200, "text/plain", (String)LevelManagers[scale-1]->getSensorMedianValue(true));
+    // Calibration - empty scale
+    LevelManagers[scale-1]->emptyScale();
+    request->send(200, "application/json", "{\"message\":\"Empty scale calibration done!\"}");
+  });
+
+  webServer.on("/api/setup/weight", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
+    [&](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
+      
+    if (!request->hasParam("scale")) return request->send(400, "text/plain", "Missing parameter scale");    
+    uint8_t scale = request->getParam("scale")->value().toInt();
+    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "text/plain", "Bad request, value outside available scales");
+
+    // Calibration - reference weight
+    DynamicJsonDocument jsonBuffer(64);
+    deserializeJson(jsonBuffer, (const char*)data);
+    if (!jsonBuffer["weight"].is<int>()) return request->send(422, "text/plain", "Invalid data");
+    LevelManagers[scale-1]->setupWeight(jsonBuffer["weight"]);
+    request->send(200, "application/json", "{\"message\":\"Setup completed\"}");
   });
 
   webServer.on("/api/level/current/all", HTTP_GET, [&](AsyncWebServerRequest *request) {
     String output;
     StaticJsonDocument<512> doc;
+    JsonArray array = doc.to<JsonArray>();
+
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
-      doc[String("level")+String(i)] = LevelManagers[i]->getCalculatedPercentage(true);
+      array.add(LevelManagers[i]->getCalculatedPercentage(true));
     }
     serializeJson(doc, output);
     request->send(200, "application/json", output);
   });
 
-  webServer.on("/api/level/current", HTTP_GET, [&](AsyncWebServerRequest *request) {
-    if (!request->hasParam("scale")) return request->send(400, "text/plain", "Missing parameter scale");    
-    uint8_t scale = request->getParam("scale")->value().toInt();
-    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "text/plain", "Bad request, value outside available scales");
-
-    if (request->contentType() == "application/json") {
-      String output;
-      StaticJsonDocument<16> doc;
-      doc["levelPercent"] = LevelManagers[scale-1]->getCalculatedPercentage(true);
-      serializeJson(doc, output);
-      request->send(200, "application/json", output);
-    } else request->send(200, "text/plain", (String)LevelManagers[scale-1]->getCalculatedPercentage(true));
+  webServer.on("/api/level/num", HTTP_GET, [&](AsyncWebServerRequest *request) {
+    String output;
+    DynamicJsonDocument json(256);
+    json["num"] = LEVELMANAGERS;
+    serializeJson(json, output);
+    request->send(200, "application/json", output);
   });
 
   webServer.on("/api/esp/heap", HTTP_GET, [&](AsyncWebServerRequest * request) {
@@ -202,24 +177,11 @@ void APIRegisterRoutes() {
     request->send(200, "text/plain", String(ESP.getCpuFreqMHz()));
   });
 
-  webServer.on("/api/num/levels", HTTP_GET, [&](AsyncWebServerRequest *request) {
-    String output;
-    DynamicJsonDocument json(256);
-    json["num"] = LEVELMANAGERS;
-    serializeJson(json, output);
-    request->send(200, "application/json", output);
-  });
+  webServer.serveStatic("/", LittleFS, "/")
+    .setCacheControl("max-age=86400")
+    .setDefaultFile("index.html");
 
-  webServer.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
-  
-  events.onConnect([](AsyncEventSourceClient *client) {
-    if (client->lastId()) {
-      Serial.printf("[WEB] Client reconnected! Last message ID that it got is: %u\n", client->lastId());
-    }
-  });
-  webServer.addHandler(&events);
-
-  webServer.onNotFound([](AsyncWebServerRequest *request) {
+  webServer.onNotFound([&](AsyncWebServerRequest *request) {
     if (request->method() == HTTP_OPTIONS) {
       request->send(200);
     } else {

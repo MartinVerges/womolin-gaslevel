@@ -1,11 +1,14 @@
 /**
- *
- * Gas Scale
- * https://github.com/MartinVerges/rv-smart-gas-scale
- *
- * (c) 2022 Martin Verges
- *
-**/
+ * @file dac.h
+ * @author Martin Verges <martin@veges.cc>
+ * @version 0.1
+ * @date 2022-07-09
+ * 
+ * @copyright Copyright (c) 2022 by the author alone
+ *            https://gitlab.womolin.de/martin.verges/gaslevel
+ * 
+ * License: CC BY-NC-SA 4.0
+ */
 
 #ifndef DAC_MIN_MVOLT
 #define DAC_MIN_MVOLT 500.0                 // DAC output minimum value (~0.5V on 0% tank level)
