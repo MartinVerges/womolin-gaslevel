@@ -24,6 +24,11 @@
 #define webserverPort 80                    // Start the Webserver on this port
 #define NVS_NAMESPACE "gaslevel"            // Preferences.h namespace to store settings
 
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_BMP085.h>
+Adafruit_BMP085 myBMP;
+
 RTC_DATA_ATTR struct timing_t {
   // Check Services like MQTT, ...
   uint64_t lastServiceCheck = 0;               // last millis() from ServiceCheck
@@ -61,15 +66,6 @@ Preferences preferences;
 
 MQTTclient Mqtt;
 
-String getMacFromBT(String spacer = "") {
-  String output = "";
-  uint8_t mac[6];
-  esp_read_mac(mac, ESP_MAC_BT);
-  for (int i = 0; i < 6; i++) {
-    char m[3];
-    sprintf(m, "%02X", mac[i]);
-    output += m;
-    if (i < 5) output += spacer;
-  }
-  return output;
+uint64_t runtime() {
+  return rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get()) / 1000;
 }

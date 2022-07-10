@@ -1,5 +1,5 @@
 /**
- * @file scale.cpp
+ * @file main.cpp
  * @author Martin Verges <martin@veges.cc>
  * @brief Gas scale to MQTT with WiFi, BLE, and more
  * @version 0.1
@@ -46,12 +46,6 @@ extern "C" {
 #include "api-routes.h"
 #include "ble.h"
 #include "dac.h"
-
-#include <SPI.h>
-#include <Wire.h>
-#include <Adafruit_BMP085.h>
-Adafruit_BMP085 myBMP;
-
 
 void IRAM_ATTR ISR_button1() {
   button1.pressed = true;
@@ -104,10 +98,6 @@ void print_wakeup_reason() {
     case ESP_SLEEP_WAKEUP_ULP : Serial.println(F("[POWER] Wakeup caused by ULP program")); break;
     default : Serial.printf("[POWER] Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
   }
-}
-
-uint64_t runtime() {
-  return rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get()) / 1000;
 }
 
 void initWifiAndServices() {
@@ -215,7 +205,7 @@ void loop() {
     } else {
       initWifiAndServices();
     }
-    softReset();
+    // softReset();
   }
 
   if (runtime() - Timing.lastServiceCheck > Timing.serviceInterval) {
@@ -239,10 +229,9 @@ void loop() {
         if (enableDac) dacValue(i+1, level);
         if (enableBle) updateBleCharacteristic(level);  // FIXME: need to manage multiple levels
         if (enableMqtt && Mqtt.isReady()) {
-          Mqtt.client.publish((Mqtt.mqttTopic + "/bottle" + String(i+1)).c_str(), 0, true, String(level).c_str());
+          Mqtt.client.publish((Mqtt.mqttTopic + "/bottle" + String(i+1)).c_str(), String(level).c_str(), true);
 
           float alt = myBMP.readAltitude();
-
           Mqtt.client.publish((Mqtt.mqttTopic + "/sensor" + String(i+1)).c_str(), String(LevelManagers[i]->getSensorMedianValue(true)).c_str(), true);
           Mqtt.client.publish((Mqtt.mqttTopic + "/temperature" + String(i+1)).c_str(), String(myBMP.readTemperature()).c_str(), true);
           Mqtt.client.publish((Mqtt.mqttTopic + "/pressure" + String(i+1)).c_str(), String(myBMP.readPressure()).c_str(), true);
