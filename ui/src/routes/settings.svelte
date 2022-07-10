@@ -13,7 +13,7 @@
 		const response = await fetch(`/api/config`, {
             headers: { "Content-type": "application/json" }
         })
-        .catch(error => { throw new Error(`${error})`); });
+        .catch(error => console.log(error));
         if(response.ok) config = await response.json();
         else {
             toast.push(`Error ${response.status} ${response.statusText}<br>Unable to receive current settings.`, variables.toast.error)
@@ -31,7 +31,7 @@
             } else {
                 toast.push(`Error ${response.status} ${response.statusText}<br>Unable to store new AP configuration.`, variables.toast.error)
             }
-        }).catch(error => { throw new Error(`${error})`); })		
+        }).catch(error => console.log(error))		
 	}
 </script>
 
