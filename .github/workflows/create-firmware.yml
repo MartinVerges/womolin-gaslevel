@@ -28,7 +28,7 @@ jobs:
         pio run
         pio run -t buildfs
 # produces ${{ github.workspace }}/.pio/build/esp32dev/firmware.bin
-# produces ${{ github.workspace }}/.pio/build/esp32dev/spiffs.bin
+# produces ${{ github.workspace }}/.pio/build/esp32dev/littlefs.bin
 
     - name: 'Upload firmware Artifact'
       uses: actions/upload-artifact@v2
@@ -40,6 +40,6 @@ jobs:
     - name: 'Upload spiffs Artifact'
       uses: actions/upload-artifact@v2
       with:
-        name: spiffs.bin
+        name: littlefs.bin
         path: |
-          ${{ github.workspace }}/.pio/build/esp32dev/spiffs.bin
+          ${{ github.workspace }}/.pio/build/esp32dev/littlefs.bin
