@@ -2,9 +2,7 @@
 <script>
     import { variables } from '$lib/utils/variables';
     import { onMount } from 'svelte';
-    import { 
-        Form, 
-        FormGroup,
+    import {
         Label,
         Input,
         Button

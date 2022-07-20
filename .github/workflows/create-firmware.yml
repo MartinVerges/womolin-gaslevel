@@ -37,7 +37,7 @@ jobs:
         path: |
           ${{ github.workspace }}/.pio/build/esp32dev/firmware.bin
 
-    - name: 'Upload spiffs Artifact'
+    - name: 'Upload littlefs Artifact'
       uses: actions/upload-artifact@v2
       with:
         name: littlefs.bin

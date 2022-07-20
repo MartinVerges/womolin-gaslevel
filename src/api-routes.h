@@ -10,19 +10,111 @@
  * License: CC BY-NC-SA 4.0
  */
 
+#include <Arduino.h>
 #include <AsyncJson.h>
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
 #include <FS.h>
 #include <LittleFS.h>
 #include "ble.h"
+#include <Update.h>
+#include <esp_ota_ops.h>
 
 extern bool enableWifi;
 extern bool enableBle;
 extern bool enableMqtt;
 extern bool enableDac;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+uint8_t temprature_sens_read();
+#ifdef __cplusplus
+}
+#endif
+uint8_t temprature_sens_read();
+
 void APIRegisterRoutes() {
+  webServer.on("/api/firmware/info", HTTP_GET, [&](AsyncWebServerRequest *request) {
+    auto data = esp_ota_get_running_partition();
+    String output;
+    StaticJsonDocument<16> doc;
+    doc["partition_type"] = data->type;
+    doc["partition_subtype"] = data->subtype;
+    doc["address"] = data->address;
+    doc["size"] = data->size;
+    doc["label"] = data->label;
+    doc["encrypted"] = data->encrypted;
+    serializeJson(doc, output);
+    request->send(500, "application/json", output);
+  });
+
+  webServer.on("/api/update/upload", HTTP_POST,
+    [&](AsyncWebServerRequest *request) { },
+    [&](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
+
+    String otaPassword = "";
+    if (preferences.begin(NVS_NAMESPACE, true)) {
+      otaPassword = preferences.getString("otaPassword");
+      preferences.end();
+
+      if (otaPassword.length()) {
+        if(!request->authenticate("ota", otaPassword.c_str())) {
+          return request->send(401, "application/json", "{\"message\":\"Invalid OTA password provided!\"}");
+        }
+      } else Serial.println(F("[OTA] No password configured, no authentication requested!"));
+    } else Serial.println(F("[OTA] Unable to load password from NVS."));
+
+    if (!index) {
+      Serial.print(F("[OTA] Begin firmware update with filename: "));
+      Serial.println(filename);
+      // if filename includes spiffs|littlefs, update the spiffs|littlefs partition
+      int cmd = (filename.indexOf("spiffs") > -1 || filename.indexOf("littlefs") > -1) ? U_SPIFFS : U_FLASH;
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
+        Serial.print(F("[OTA] Error: "));
+        Update.printError(Serial);
+        request->send(500, "application/json", "{\"message\":\"Unable to begin firmware update!\"}");
+      }
+    }
+
+    if (Update.write(data, len) != len) {
+      Serial.print(F("[OTA] Error: "));
+      Update.printError(Serial);
+      request->send(500, "application/json", "{\"message\":\"Unable to write firmware update data!\"}");
+    }
+
+    if (final) {
+      if (!Update.end(true)) {
+        String output;
+        StaticJsonDocument<16> doc;
+        doc["message"] = "Update error";
+        doc["error"] = Update.errorString();
+        serializeJson(doc, output);
+        request->send(500, "application/json", output);
+
+        Serial.println("[OTA] Error when calling calling Update.end().");
+        Update.printError(Serial);
+      } else {
+        Serial.println("[OTA] Firmware update successful.");
+        request->send(200, "application/json", "{\"message\":\"Please wait while the device reboots!\"}");
+        yield();
+        delay(250);
+
+        Serial.println("[OTA] Update complete, rebooting now!");
+        Serial.flush();
+        ESP.restart();
+      }
+    }
+  });
+
+  events.onConnect([&](AsyncEventSourceClient *client){
+    if(client->lastId()){
+      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+    }
+    client->send("connected", NULL, millis(), 1000);
+  });
+  webServer.addHandler(&events);
+
   webServer.on("/api/reset", HTTP_POST, [&](AsyncWebServerRequest *request) {
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     request->send(200, "application/json", "{\"message\":\"Resetting the sensor!\"}");
@@ -65,6 +157,8 @@ void APIRegisterRoutes() {
         enableDac = jsonBuffer["enabledac"].as<boolean>();
       }
 
+      preferences.putString("otaPassword", jsonBuffer["otaPassword"].as<String>());
+
       // MQTT Settings
       preferences.putUInt("mqttPort", jsonBuffer["mqttport"].as<uint16_t>());
       preferences.putString("mqttHost", jsonBuffer["mqtthost"].as<String>());
@@ -102,6 +196,8 @@ void APIRegisterRoutes() {
         doc["enablesoftap"] = WifiManager.getFallbackState();
         doc["enableble"] = enableBle;
         doc["enabledac"] = enableDac;
+
+        doc["otaPassword"] = preferences.getString("otaPassword");
 
         // MQTT
         doc["enablemqtt"] = enableMqtt;
@@ -165,16 +261,60 @@ void APIRegisterRoutes() {
     request->send(200, "application/json", output);
   });
 
-  webServer.on("/api/esp/heap", HTTP_GET, [&](AsyncWebServerRequest * request) {
-    request->send(200, "text/plain", String(ESP.getFreeHeap()));
-  });
+  webServer.on("/api/esp", HTTP_GET, [&](AsyncWebServerRequest * request) {
+    String output;
+    DynamicJsonDocument json(2048);
 
-  webServer.on("/api/esp/cores", HTTP_GET, [&](AsyncWebServerRequest * request) {
-    request->send(200, "text/plain", String(ESP.getChipCores()));
-  });
+    json["rebootReason"] = esp_reset_reason();
 
-  webServer.on("/api/esp/freq", HTTP_GET, [&](AsyncWebServerRequest * request) {
-    request->send(200, "text/plain", String(ESP.getCpuFreqMHz()));
+    JsonObject build = json.createNestedObject("build");
+    build["date"] = __DATE__;
+    build["time"] = __TIME__;
+
+    JsonObject ram = json.createNestedObject("ram");
+    ram["heapSize"] = ESP.getHeapSize();
+    ram["freeHeap"] = ESP.getFreeHeap();
+    ram["usagePercent"] = (float)ESP.getFreeHeap() / (float)ESP.getHeapSize() * 100.f;
+    ram["minFreeHeap"] = ESP.getMinFreeHeap();
+    ram["maxAllocHeap"] = ESP.getMaxAllocHeap();
+
+    JsonObject spi = json.createNestedObject("spi");
+    spi["psramSize"] = ESP.getPsramSize();
+    spi["freePsram"] = ESP.getFreePsram();
+    spi["minFreePsram"] = ESP.getMinFreePsram();
+    spi["maxAllocPsram"] = ESP.getMaxAllocPsram();
+
+    JsonObject chip = json.createNestedObject("chip");
+    chip["revision"] = ESP.getChipRevision();
+    chip["model"] = ESP.getChipModel();
+    chip["cores"] = ESP.getChipCores();
+    chip["cpuFreqMHz"] = ESP.getCpuFreqMHz();
+    chip["cycleCount"] = ESP.getCycleCount();
+    chip["sdkVersion"] = ESP.getSdkVersion();
+    chip["efuseMac"] = ESP.getEfuseMac();
+    chip["temperature"] = (temprature_sens_read() - 32) / 1.8;
+
+    JsonObject flash = json.createNestedObject("flash");
+    flash["flashChipSize"] = ESP.getFlashChipSize();
+    flash["flashChipRealSize"] = spi_flash_get_chip_size();
+    flash["flashChipSpeedMHz"] = ESP.getFlashChipSpeed() / 1000000;
+    flash["flashChipMode"] = ESP.getFlashChipMode();
+    flash["sdkVersion"] = ESP.getFlashChipSize();
+
+    JsonObject sketch = json.createNestedObject("sketch");
+    sketch["size"] = ESP.getSketchSize();
+    sketch["maxSize"] = ESP.getFreeSketchSpace();
+    sketch["usagePercent"] = (float)ESP.getSketchSize() / (float)ESP.getFreeSketchSpace() * 100.f;
+    sketch["md5"] = ESP.getSketchMD5();
+
+    JsonObject fs = json.createNestedObject("filesystem");
+    fs["type"] = F("LittleFS");
+    fs["totalBytes"] = LittleFS.totalBytes();
+    fs["usedBytes"] = LittleFS.usedBytes();
+    fs["usagePercent"] = (float)LittleFS.usedBytes() / (float)LittleFS.totalBytes() * 100.f;
+    
+    serializeJson(json, output);
+    request->send(200, "application/json", output);
   });
 
   webServer.serveStatic("/", LittleFS, "/")

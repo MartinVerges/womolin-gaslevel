@@ -29,6 +29,8 @@
 #include <AsyncTCP.h>
 #include <Preferences.h>
 #include <ESPmDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 
 // Power Management
 #include <driver/rtc_io.h>
@@ -46,6 +48,10 @@ extern "C" {
 #include "api-routes.h"
 #include "ble.h"
 #include "dac.h"
+
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BMP085_U.h>
+Adafruit_BMP085_Unified bmp180 = Adafruit_BMP085_Unified(10085);
 
 void IRAM_ATTR ISR_button1() {
   button1.pressed = true;
@@ -132,6 +138,7 @@ void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println(F("\n\n==== starting ESP32 setup() ===="));
+  Serial.printf("Firmware build date: %s %s\n", __DATE__, __TIME__);
 
   print_wakeup_reason();
   Serial.printf("[SETUP] Configure ESP32 to sleep for every %d Seconds\n", TIME_TO_SLEEP);
@@ -141,9 +148,6 @@ void setup() {
   attachInterrupt(button1.PIN, ISR_button1, FALLING);
   Serial.println(F("done"));
 
-  Wire.begin((int)SDA, (int)SCL);
-  myBMP.begin(BMP085_ULTRAHIGHRES, &Wire);
-
   if (!LittleFS.begin(true)) {
     Serial.println(F("[FS] An Error has occurred while mounting LittleFS"));
     // Reduce power consumption while having issues with NVS
@@ -151,6 +155,9 @@ void setup() {
     deepsleepForSeconds(5);
   }
   if (!preferences.begin(NVS_NAMESPACE)) preferences.clear();
+  Serial.println(F("[LITTLEFS] initialized"));
+
+  bmp180.begin();
 
   for (uint8_t i=0; i < LEVELMANAGERS; i++) {
     LevelManagers[i]->begin(String(NVS_NAMESPACE) + String("s") + String(i));
@@ -173,6 +180,40 @@ void setup() {
   if (enableBle) createBleServer(hostName);
   else Serial.println(F("[BLE] Bluetooth low energy is disabled."));
   
+  String otaPassword = preferences.getString("otaPassword");
+  if (otaPassword.isEmpty()) {
+    otaPassword = String((uint32_t)ESP.getEfuseMac());
+    preferences.putString("otaPassword", otaPassword);
+  }
+  Serial.printf("[OTA] Password set to '%s'\n", otaPassword);
+  ArduinoOTA
+    .setPassword(otaPassword.c_str())
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH) type = "sketch";
+      else {
+        type = "filesystem";
+        LittleFS.end();
+      }
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
+
+  ArduinoOTA.begin();
+
   preferences.end();
 
   for (uint8_t i=0; i < LEVELMANAGERS; i++) {
@@ -220,33 +261,50 @@ void loop() {
   if (runtime() - Timing.lastSensorRead > Timing.sensorInterval) {
     Timing.lastSensorRead = runtime();
 
-    int level;
+    String jsonOutput;
+    StaticJsonDocument<1024> jsonDoc;
+
+    sensors_event_t event;
+    bmp180.getEvent(&event);
+    float temperature;
+    bmp180.getTemperature(&temperature);
+
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
-      level = -1;
       if (LevelManagers[i]->isConfigured()) {
-        level = LevelManagers[i]->getCalculatedPercentage();
+        uint8_t level = LevelManagers[i]->getCalculatedPercentage();
+        int sensorValue = LevelManagers[i]->getSensorMedianValue(true);
+
         String ident = String("level") + String(i);
         if (enableDac) dacValue(i+1, level);
         if (enableBle) updateBleCharacteristic(level);  // FIXME: need to manage multiple levels
         if (enableMqtt && Mqtt.isReady()) {
-          Mqtt.client.publish((Mqtt.mqttTopic + "/bottle" + String(i+1)).c_str(), String(level).c_str(), true);
-
-          float alt = myBMP.readAltitude();
-          Mqtt.client.publish((Mqtt.mqttTopic + "/sensor" + String(i+1)).c_str(), String(LevelManagers[i]->getSensorMedianValue(true)).c_str(), true);
-          Mqtt.client.publish((Mqtt.mqttTopic + "/temperature" + String(i+1)).c_str(), String(myBMP.readTemperature()).c_str(), true);
-          Mqtt.client.publish((Mqtt.mqttTopic + "/pressure" + String(i+1)).c_str(), String(myBMP.readPressure()).c_str(), true);
-          Mqtt.client.publish((Mqtt.mqttTopic + "/sealevelpressure" + String(i+1)).c_str(), String(myBMP.readSealevelPressure(alt)).c_str(), true);
-          Mqtt.client.publish((Mqtt.mqttTopic + "/altitude" + String(i+1)).c_str(), String(alt).c_str(), true);
-
+          Mqtt.client.publish((Mqtt.mqttTopic + "/level" + String(i+1)).c_str(), String(level).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), String(sensorValue).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/airPressure" + String(i+1)).c_str(), String(event.pressure).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/temperature" + String(i+1)).c_str(), String(temperature).c_str(), true);
         }
+
+        jsonDoc[i]["id"] = i;
+        jsonDoc[i]["level"] = level;
+        jsonDoc[i]["sensorValue"] = LevelManagers[i]->getSensorMedianValue();
+        jsonDoc[i]["airPressure"] = event.pressure;
+        jsonDoc[i]["temperature"] = temperature;
+
         Serial.printf("[SENSOR] Current level of %d. sensor is %d (raw %d)\n",
           i+1, level, LevelManagers[i]->getSensorMedianValue(true)
         );
       } else {
         if (enableDac) dacValue(i+1, 0);
-        if (enableBle) updateBleCharacteristic(level);  // FIXME
-        level = LevelManagers[i]->getSensorMedianValue();
-        Serial.printf("[SENSOR] Sensor %d not configured, please run the setup! Raw sensor value %d\n", i, level);
+        if (enableBle) updateBleCharacteristic(0);  // FIXME
+
+        jsonDoc[i]["id"] = i;
+        jsonDoc[i]["sensorValue"] = LevelManagers[i]->getSensorMedianValue();
+        jsonDoc[i]["airPressure"] = event.pressure;
+        jsonDoc[i]["temperature"] = temperature;
+
+        Serial.printf("[SENSOR] Sensor %d not configured, please run the setup! (Raw sensor value %d)\n",
+          i+1, (int)LevelManagers[i]->getSensorMedianValue(true)
+        );
       }
     }
   }

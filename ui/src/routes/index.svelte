@@ -1,43 +1,56 @@
 
 <script>
-    import { variables } from '$lib/utils/variables';
-    import { Progress, Button, Spinner } from 'sveltestrap';
-    import { toast } from '@zerodevx/svelte-toast';
-    import { onMount } from 'svelte';
+  import { Progress } from 'sveltestrap';
+  import { onMount } from 'svelte';
 
-    // ******* SHOW LEVEL ******** //
-    let level = {};
-    async function getCurrentLevel() {
-        const response = await fetch(`/api/level/current/all`).catch(error => console.log(error));
-        if(response.ok) level = await response.json();
-        else {
-            toast.push(`Error ${response.status} ${response.statusText}<br>Unable to request current level.`, variables.toast.error)
+  // ******* SHOW LEVEL ******** //
+  let level = undefined;
+  onMount(async () => { 
+    if (!!window.EventSource) {
+      var source = new EventSource('/events');
+
+      source.addEventListener('error', function(e) {
+        if (e.target.readyState != EventSource.OPEN) {
+          console.log("Events Disconnected");
         }
-    }
+      }, false);
 
-    let refreshInterval
-    onMount(async () => { 
-        getCurrentLevel()
-        clearInterval(refreshInterval)
-        refreshInterval = setInterval(getCurrentLevel, 5000)
-    });
+      source.addEventListener('message', function(e) {
+        console.log("message", e.data);
+      }, false);
+
+      source.addEventListener('status', function(e) {
+        try {
+          let data = JSON.parse(e.data);          
+          level = [];
+          data.forEach((element, i) => {
+            if ('level' in element) level[i] = element.level
+          }); 
+        } catch (error) {
+          console.log(error);
+          console.log("Error parsing status", e.data);          
+        }
+      }, false);
+    }
+  })
+
 </script>
 
 <svelte:head>
   <title>Sensor Status</title>
 </svelte:head>
 
-<div class="container">
-    <div class="row">
-    {#if level == undefined}
-        <div class="col">Requesting current level, please wait...</div>
-    {:else}
-        {#each {length: level.length} as _, i}
-        <div class="col-sm-12">Current level of scale {(i+1)}</div>
-        <div class="col-sm-12">
-            <Progress animated value={level[i]} style="height: 5rem;">{level[i]}%</Progress>
-        </div>
-        {/each}
-    {/if}
+<div class="row">
+{#if level == undefined}
+    <div class="col">Requesting current level, please wait...</div>
+{:else if level.length == 0}
+    <div class="col">Please calibrate your Sensor...</div>
+{:else}
+    {#each {length: level.length} as _, i}
+    <div class="col-sm-12">Current level of scale {(i+1)}</div>
+    <div class="col-sm-12">
+        <Progress animated value={level[i]} style="height: 5rem;">{level[i]}%</Progress>
     </div>
+    {/each}
+{/if}
 </div>

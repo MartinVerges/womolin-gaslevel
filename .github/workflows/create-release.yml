@@ -9,6 +9,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    - name: Installing UI dependencies
+      run: |
+        npm config set "@fortawesome:registry" https://npm.fontawesome.com/
+        npm config set "//npm.fontawesome.com/:_authToken" ${{ secrets.NPM_FONTAWESOME_KEY }}
+        cd ui
+        npm install
+        npm run build
+        cd ..
+
     steps:
     - name: 'Checkout'
       uses: actions/checkout@v2
@@ -21,7 +30,7 @@ jobs:
         pio run
         pio run -t buildfs
 # produces ${{ github.workspace }}/.pio/build/esp32dev/firmware.bin
-# produces ${{ github.workspace }}/.pio/build/esp32dev/spiffs.bin
+# produces ${{ github.workspace }}/.pio/build/esp32dev/littlefs.bin
 
     - name: 'Upload firmware Artifact'
       uses: actions/upload-artifact@v2
@@ -29,11 +38,11 @@ jobs:
         name: firmware.bin
         path: ${{ github.workspace }}/.pio/build/esp32dev/firmware.bin
 
-    - name: 'Upload spiffs Artifact'
+    - name: 'Upload littlefs Artifact'
       uses: actions/upload-artifact@v2
       with:
-        name: spiffs.bin
-        path: ${{ github.workspace }}/.pio/build/esp32dev/spiffs.bin
+        name: littlefs.bin
+        path: ${{ github.workspace }}/.pio/build/esp32dev/littlefs.bin
 
     - name: 'Create Release'
       id: create_release
@@ -43,7 +52,7 @@ jobs:
       with:
         tag_name: ${{ github.ref }}
         release_name: Release ${{ github.ref }}
-        file: ${{ github.workspace }}/.pio/build/esp32dev/firmware.bin;${{ github.workspace }}/.pio/build/esp32dev/spiffs.bin
+        file: ${{ github.workspace }}/.pio/build/esp32dev/firmware.bin;${{ github.workspace }}/.pio/build/esp32dev/littlefs.bin
         body: |
           Firmware release
         draft: false
@@ -58,11 +67,12 @@ jobs:
         asset_path: ${{ github.workspace }}/.pio/build/esp32dev/firmware.bin
         asset_name: firmware.bin
 
-    - name: 'Upload spiffs Artifact to release'
+    - name: 'Upload littlefs Artifact to release'
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/.pio/build/esp32dev/spiffs.bin
-        asset_name: spiffs.bin
+        asset_path: ${{ github.workspace }}/.pio/build/esp32dev/littlefs.bin
+        asset_name: littlefs.bin
+

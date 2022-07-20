@@ -29,13 +29,14 @@
     let selectedId = "wifiConfigList";
 
     let wifiConfigList = undefined; // [{"id":1,"apName":"xxx","apPass":true},...]
-    onMount(async () => {
+    async function getConfigList() {
 		const response = await fetch(`/api/wifi/configlist`).catch(error => console.log(error));
 		if(response.ok) wifiConfigList = await response.json();
         else {
             toast.push(`Error ${response.status} ${response.statusText}<br>Unable to request the list of known Wifi SSIDs.`, variables.toast.error)
         }
-	});
+	};
+    onMount(getConfigList);
 
     let refreshInterval
     let wifiScanList = undefined; // [{"ssid":"xxx","encryptionType":3,"rssi":-58,"channel":7},...] || {"status": "scanning"}
@@ -90,6 +91,7 @@
             if (response.ok) {
                 openModal = false;
                 toast.push(`Successfully removed AP from known List`, variables.toast.success)
+                getConfigList()
             } else {
                 toast.push(`Error ${response.status} ${response.statusText}<br>Unable to remove the AP configuration.`, variables.toast.error)
             }
