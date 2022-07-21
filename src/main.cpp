@@ -315,6 +315,10 @@ void loop() {
         );
       }
     }
+
+    serializeJsonPretty(jsonDoc, jsonOutput);
+    events.send(jsonOutput.c_str(), "status", millis());
+    //Serial.println(jsonOutput);
   }
   sleepOrDelay();
 }
