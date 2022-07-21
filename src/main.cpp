@@ -52,6 +52,7 @@ extern "C" {
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP085_U.h>
 Adafruit_BMP085_Unified bmp180 = Adafruit_BMP085_Unified(10085);
+bool bmp180_found = false;
 
 void IRAM_ATTR ISR_button1() {
   button1.pressed = true;
@@ -117,9 +118,11 @@ void initWifiAndServices() {
   Serial.println(F("[WEB] HTTP server started"));
 
   if (enableWifi) {
-    Serial.println("[MDNS] Starting mDNS Service!");
+    Serial.println(F("[MDNS] Starting mDNS Service!"));
     MDNS.begin(hostName.c_str());
     MDNS.addService("http", "tcp", 80);
+    MDNS.addService("ota", "udp", 3232);
+    Serial.printf("[MDNS] You should be able now to open http://%s.local/ in your browser.\n", hostName);
   }
 
   if (enableMqtt) {
@@ -157,7 +160,8 @@ void setup() {
   if (!preferences.begin(NVS_NAMESPACE)) preferences.clear();
   Serial.println(F("[LITTLEFS] initialized"));
 
-  bmp180.begin();
+  bmp180_found = bmp180.begin(BMP085_MODE_ULTRAHIGHRES);
+  if (!bmp180_found) Serial.println(F("[BMP180] Chip not found, disabling temperature and pressure"));
 
   for (uint8_t i=0; i < LEVELMANAGERS; i++) {
     LevelManagers[i]->begin(String(NVS_NAMESPACE) + String("s") + String(i));
@@ -187,6 +191,7 @@ void setup() {
   }
   Serial.printf("[OTA] Password set to '%s'\n", otaPassword);
   ArduinoOTA
+    .setHostname(hostName.c_str())
     .setPassword(otaPassword.c_str())
     .onStart([]() {
       String type;
@@ -265,10 +270,13 @@ void loop() {
     StaticJsonDocument<1024> jsonDoc;
 
     sensors_event_t event;
-    bmp180.getEvent(&event);
-    float temperature;
-    bmp180.getTemperature(&temperature);
-
+    float temperature = 0.f;
+    if (bmp180_found) {
+      bmp180.getEvent(&event);
+      bmp180.getTemperature(&temperature);
+    } else {
+      event.pressure = 0;
+    }
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
       if (LevelManagers[i]->isConfigured()) {
         uint8_t level = LevelManagers[i]->getCalculatedPercentage();
