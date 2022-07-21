@@ -66,6 +66,7 @@
                 addApConfig.apName = "";
                 addApConfig.apPass = "";
                 toast.push(`The new AP was saved`, variables.toast.success)
+                getConfigList()
             } else {
                 toast.push(`Error ${response.status} ${response.statusText}<br>Unable to store new AP configuration.`, variables.toast.error)
             }
