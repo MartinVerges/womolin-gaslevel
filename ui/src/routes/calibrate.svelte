@@ -1,61 +1,83 @@
 
 <script>
-    import { variables } from '$lib/utils/variables';
-    import { onMount } from 'svelte';
-    import {
-        Label,
-        Input,
-        Button
-    } from 'sveltestrap';
-    import { toast } from '@zerodevx/svelte-toast';
+  import { variables } from '$lib/utils/variables';
+  import { onMount } from 'svelte';
+  import {
+    Label,
+    Input,
+    Button
+  } from 'sveltestrap';
+  import { toast } from '@zerodevx/svelte-toast';
 
-    let step = 1;
+  // ******* SHOW STATUS ******** //
+  let sensorValue = undefined;
+  onMount(async () => { 
+    if (!!window.EventSource) {
+      var source = new EventSource('/api/events');
 
-    let numScales = 0;
-    onMount(async () => {
-		const response = await fetch(`/api/level/num`, {
-            headers: { "Content-type": "application/json" }
-        }).catch(error => console.log(error))
-        if(response.ok) {
-            let data = await response.json();
-            numScales = data.num || 0;
-        } else {
-            toast.push(`Error ${response.status} ${response.statusText}<br>Unable to receive current settings.`, variables.toast.error)
+      source.addEventListener('error', function(e) {
+        if (e.target.readyState != EventSource.OPEN) {
+          console.log("Events Disconnected");
         }
+      }, false);
+
+      source.addEventListener('status', function(e) {
+        try {
+          sensorValue = JSON.parse(e.data);
+        } catch (error) {
+          console.log(error);
+          console.log("Error parsing status", e.data);          
+        }
+      }, false);
+    }
+  })
+
+  let step = 1;
+
+  let numScales = 0;
+  onMount(async () => {
+  const response = await fetch(`/api/level/num`, {
+      headers: { "Content-type": "application/json" }
+    }).catch(error => console.log(error))
+    if(response.ok) {
+      let data = await response.json();
+      numScales = data.num || 0;
+    } else {
+      toast.push(`Error ${response.status} ${response.statusText}<br>Unable to receive current settings.`, variables.toast.error)
+    }
 	});
 
-    let selectedScale = undefined;
-    async function endStep1 () { step = 2; }
-    async function endStep2 () { 
-        fetch(`/api/setup/empty?scale=${selectedScale}`, {
-			method: 'POST',
-            body: '{}',
-            headers: { "Content-type": "application/json" }
-		}).then(response => {
-            if (response.ok) {
-                step = 3;
-            } else {
-                toast.push(`Error ${response.status} ${response.statusText}<br>Unable to write the empty value into the configuration.`, variables.toast.error)
-            }
-        }).catch(error => console.log(error))
-    }
-    let data = { weight: 0 };
-    async function endStep3 () { 
-        fetch(`/api/setup/weight?scale=${selectedScale}`, {
-			method: 'POST',
-			body: JSON.stringify(data),
-            headers: { "Content-type": "application/json" }
-		}).then(response => {
-            if (response.ok) {
-                step = 1;
-                selectedScale = undefined;
-                toast.push(`Scale successfully calibrated`, variables.toast.success)
-            } else {
-                toast.push(`Error ${response.status} ${response.statusText}<br>Unable to write the empty value into the configuration.`, variables.toast.error)
-            }
-        }).catch(error => console.log(error))
-    }
-
+  let selectedScale = undefined;
+  async function endStep1 () { step = 2; }
+  async function endStep2 () { 
+    fetch(`/api/setup/empty?scale=${selectedScale}`, {
+      method: 'POST',
+      body: '{}',
+      headers: { "Content-type": "application/json" }
+    }).then(response => {
+      if (response.ok) {
+        step = 3;
+      } else {
+        toast.push(`Error ${response.status} ${response.statusText}<br>Unable to write the empty value into the configuration.`, variables.toast.error)
+      }
+    }).catch(error => console.log(error))
+  }
+  let data = { weight: 0 };
+  async function endStep3 () { 
+    fetch(`/api/setup/weight?scale=${selectedScale}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { "Content-type": "application/json" }
+    }).then(response => {
+      if (response.ok) {
+        step = 1;
+        selectedScale = undefined;
+        toast.push(`Scale successfully calibrated`, variables.toast.success)
+      } else {
+        toast.push(`Error ${response.status} ${response.statusText}<br>Unable to write the empty value into the configuration.`, variables.toast.error)
+      }
+    }).catch(error => console.log(error))
+  }
 </script>
 
 <svelte:head>
@@ -103,3 +125,20 @@
     {/if}
 {/if}
 </div>
+
+{#if sensorValue}
+<div class="row">
+  <div class="col-sm-1">ID</div>
+  <div class="col-sm-1">Level</div>
+  <div class="col-sm-1">sensorValue</div>  
+  <div class="col-sm-1">airPressure</div>  
+  <div class="col-sm-1">temperature</div>  
+{#each sensorValue as sensor}
+  <div class="col-sm-1">{sensor.id}</div>
+  <div class="col-sm-1">{sensor.level}</div>
+  <div class="col-sm-1">{sensor.sensorValue}</div>  
+  <div class="col-sm-1">{sensor.airPressure}</div>  
+  <div class="col-sm-1">{sensor.temperature}</div>  
+{/each}
+</div>
+{/if}

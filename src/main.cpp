@@ -267,7 +267,9 @@ void loop() {
     Timing.lastSensorRead = runtime();
 
     String jsonOutput;
-    StaticJsonDocument<1024> jsonDoc;
+    //StaticJsonDocument<1024> jsonDoc;
+    DynamicJsonDocument jsonDoc(1024);
+    JsonArray jsonArray = jsonDoc.to<JsonArray>();
 
     sensors_event_t event;
     float temperature = 0.f;
@@ -278,9 +280,17 @@ void loop() {
       event.pressure = 0;
     }
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
+      int sensorValue = LevelManagers[i]->getSensorMedianValue(true);
+
+      JsonObject jsonNestedObject = jsonArray.createNestedObject();
+      jsonNestedObject["id"] = i;
+      jsonNestedObject["airPressure"] = event.pressure;
+      jsonNestedObject["temperature"] = temperature;
+      jsonNestedObject["sensorValue"] = sensorValue;
+
       if (LevelManagers[i]->isConfigured()) {
-        uint8_t level = LevelManagers[i]->getCalculatedPercentage();
-        int sensorValue = LevelManagers[i]->getSensorMedianValue(true);
+        uint8_t level = LevelManagers[i]->getCalculatedPercentage(true);
+        jsonNestedObject["level"] = level;
 
         String ident = String("level") + String(i);
         if (enableDac) dacValue(i+1, level);
@@ -292,31 +302,19 @@ void loop() {
           Mqtt.client.publish((Mqtt.mqttTopic + "/temperature" + String(i+1)).c_str(), String(temperature).c_str(), true);
         }
 
-        jsonDoc[i]["id"] = i;
-        jsonDoc[i]["level"] = level;
-        jsonDoc[i]["sensorValue"] = LevelManagers[i]->getSensorMedianValue();
-        jsonDoc[i]["airPressure"] = event.pressure;
-        jsonDoc[i]["temperature"] = temperature;
-
         Serial.printf("[SENSOR] Current level of %d. sensor is %d (raw %d)\n",
           i+1, level, LevelManagers[i]->getSensorMedianValue(true)
         );
       } else {
         if (enableDac) dacValue(i+1, 0);
         if (enableBle) updateBleCharacteristic(0);  // FIXME
-
-        jsonDoc[i]["id"] = i;
-        jsonDoc[i]["sensorValue"] = LevelManagers[i]->getSensorMedianValue();
-        jsonDoc[i]["airPressure"] = event.pressure;
-        jsonDoc[i]["temperature"] = temperature;
-
         Serial.printf("[SENSOR] Sensor %d not configured, please run the setup! (Raw sensor value %d)\n",
           i+1, (int)LevelManagers[i]->getSensorMedianValue(true)
         );
       }
     }
 
-    serializeJsonPretty(jsonDoc, jsonOutput);
+    serializeJsonPretty(jsonArray, jsonOutput);
     events.send(jsonOutput.c_str(), "status", millis());
     //Serial.println(jsonOutput);
   }

@@ -60,7 +60,7 @@ String hostName;
 uint32_t blePin;
 DNSServer dnsServer;
 AsyncWebServer webServer(webserverPort);
-AsyncEventSource events("/events");
+AsyncEventSource events("/api/events");
 Preferences preferences;
 
 MQTTclient Mqtt;

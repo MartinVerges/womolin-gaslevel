@@ -7,7 +7,7 @@
   let level = undefined;
   onMount(async () => { 
     if (!!window.EventSource) {
-      var source = new EventSource('/events');
+      var source = new EventSource('/api/events');
 
       source.addEventListener('error', function(e) {
         if (e.target.readyState != EventSource.OPEN) {
