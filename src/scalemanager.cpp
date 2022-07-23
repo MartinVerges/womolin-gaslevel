@@ -50,10 +50,12 @@ bool SCALEMANAGER::writeToNVS() {
     preferences.clear();
     preferences.putFloat("scale", hx711.get_scale());
     preferences.putLong("tare", hx711.get_offset());
+    preferences.putFloat("emptyWeight", emptyWeightGramms);
+    preferences.putFloat("fullWeight", fullWeightGramms);
     preferences.end();
     return true;
   } else {
-    Serial.println("Unable to write data to NVS, giving up...");
+    Serial.println(F("[SCALE] Unable to write data to NVS, giving up..."));
     return false;
   }
 }
@@ -66,11 +68,13 @@ bool SCALEMANAGER::isConfigured() {
 void SCALEMANAGER::begin(String nvs) {
   NVS = nvs;
   if (!preferences.begin(NVS.c_str(), false)) {
-    Serial.println("Error opening NVS Namespace, giving up...");
+    Serial.println(F("[SCALE] Error opening NVS Namespace, giving up..."));
   } else {
     scale = preferences.getFloat("scale", 1.f);
     tare = preferences.getLong("tare", 0);
-    Serial.printf("Successfully recovered data. Scale = %f with offset %ld\n", scale, tare);
+    emptyWeightGramms = preferences.getFloat("", 5500.f); // 11Kg bottle by default is 5Kg empty
+    fullWeightGramms = preferences.getFloat("", 11000.f); // 11Kg bottle by default
+    Serial.printf("[SCALE] Successfully recovered data. Scale = %f with offset %ld\n", scale, tare);
     hx711.set_scale(scale);
     hx711.set_offset(tare);
     preferences.end();
@@ -84,7 +88,7 @@ int SCALEMANAGER::getSensorMedianValue(bool cached) {
     lastMedian = hx711.get_units(10);
     return lastMedian;
   } else {
-    Serial.println("Unable to communicate with the HX711 modul.");
+    Serial.println(F("[SCALE] Unable to communicate with the HX711 modul."));
     return -1;
   }
 }
@@ -96,20 +100,35 @@ int SCALEMANAGER::getCalculatedPercentage(bool cached) {
   } else if (!cached) {
     val = (val * 10 + getSensorMedianValue(false)) / 11;
   }
-  int pct = (int)((val - 5500.f) / 11500.f * 100);
+  int pct = (int)((val - emptyWeightGramms) / fullWeightGramms * 100);
   if (pct < 0) return 0;
   if (pct > 100) return 100;
   return pct;
 }
 
 void SCALEMANAGER::emptyScale() {
-  Serial.println(F("Resetting scale"));
+  Serial.println(F("[SCALE] Resetting scale"));
   hx711.set_scale();
-  Serial.println(F("Resetting tare"));
+  Serial.println(F("[SCALE] Resetting tare"));
   hx711.tare();
 }
 
-bool SCALEMANAGER::setupWeight(int weight) {
+bool SCALEMANAGER::applyCalibrateWeight(int weight) {
   hx711.set_scale(hx711.get_units(10) / weight);
   return writeToNVS();
 }
+
+bool SCALEMANAGER::setBottleWeight(int newEmptyWeightGramms, int newFullWeightGramms) {
+  emptyWeightGramms = (float)newEmptyWeightGramms;
+  fullWeightGramms = (float)newFullWeightGramms;
+  bool ret = writeToNVS();
+  if (ret) {
+    Serial.printf("[SCALE] New bottle weight configured. Empty = %d, Full = %d\n", newEmptyWeightGramms, newFullWeightGramms);
+    return true;
+  }
+  Serial.printf("[SCALE] Unable to configure the new Bottle weight! Given data empty = %d, full = %d\n", newEmptyWeightGramms, newFullWeightGramms);
+  return false;
+}
+
+int SCALEMANAGER::getBottleEmptyWeight() { return (int)emptyWeightGramms; }
+int SCALEMANAGER::getBottleFullWeight() { return (int)fullWeightGramms; }

@@ -214,31 +214,73 @@ void APIRegisterRoutes() {
     } else request->send(415, "text/plain", "Unsupported Media Type");
   });
 
-  webServer.on("/api/setup/empty", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
+  webServer.on("/api/calibrate/empty", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
     [&](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
       
-    if (!request->hasParam("scale")) return request->send(400, "text/plain", "Missing parameter scale");    
+    if (!request->hasParam("scale")) return request->send(400, "application/json", "{\"message\":\"Missing parameter scale\"}");    
     uint8_t scale = request->getParam("scale")->value().toInt();
-    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "text/plain", "Bad request, value outside available scales");
+    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "application/json", "{\"message\":\"Bad request, value outside available scales\"}");
 
     // Calibration - empty scale
     LevelManagers[scale-1]->emptyScale();
     request->send(200, "application/json", "{\"message\":\"Empty scale calibration done!\"}");
   });
 
-  webServer.on("/api/setup/weight", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
+  webServer.on("/api/calibrate/weight", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
     [&](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
       
-    if (!request->hasParam("scale")) return request->send(400, "text/plain", "Missing parameter scale");    
+    if (!request->hasParam("scale")) return request->send(400, "application/json", "{\"message\":\"Missing parameter scale\"}");    
     uint8_t scale = request->getParam("scale")->value().toInt();
-    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "text/plain", "Bad request, value outside available scales");
+    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "application/json", "{\"message\":\"Bad request, value outside available scales\"}");
 
     // Calibration - reference weight
     DynamicJsonDocument jsonBuffer(64);
     deserializeJson(jsonBuffer, (const char*)data);
-    if (!jsonBuffer["weight"].is<int>()) return request->send(422, "text/plain", "Invalid data");
-    LevelManagers[scale-1]->setupWeight(jsonBuffer["weight"]);
+    if (!jsonBuffer["weight"].is<int>()) return request->send(422, "application/json", "{\"message\":\"Invalid data\"}");
+    LevelManagers[scale-1]->applyCalibrateWeight(jsonBuffer["weight"]);
     request->send(200, "application/json", "{\"message\":\"Setup completed\"}");
+  });
+
+  webServer.on("/api/calibrate/bottleweight", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
+    [&](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
+      
+    if (!request->hasParam("scale")) return request->send(400, "application/json", "{\"message\":\"Missing parameter scale\"}");    
+    uint8_t scale = request->getParam("scale")->value().toInt();
+    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "application/json", "{\"message\":\"Bad request, value outside available scales\"}");
+
+    // Calibration - reference weight
+    DynamicJsonDocument jsonBuffer(64);
+    deserializeJson(jsonBuffer, (const char*)data);
+
+    if (!jsonBuffer["emptyWeightGramms"].is<int>() || !jsonBuffer["emptyWeightGramms"].is<int>()) {
+      return request->send(422, "application/json", "{\"message\":\"Invalid data\"}");
+    }
+
+    int empty = jsonBuffer["emptyWeightGramms"].as<int>();
+    int full = jsonBuffer["fullWeightGramms"].as<int>();
+    if (empty <= 0 || full <= 0 ) return request->send(422, "application/json", "{\"message\":\"Invalid data\"}");
+    else {
+      if (LevelManagers[scale-1]->setBottleWeight(empty, full)) {
+        request->send(200, "application/json", "{\"message\":\"New bottle weight configured\"}");
+      } else {
+        request->send(500, "application/json", "{\"message\":\"Error while writing configuration to NVS.\"}");
+      }
+    }
+  });
+
+  webServer.on("/api/calibrate/bottleweight", HTTP_GET, [&](AsyncWebServerRequest *request) {
+    if (!request->hasParam("scale")) return request->send(400, "application/json", "{\"message\":\"Missing parameter scale\"}");    
+    uint8_t scale = request->getParam("scale")->value().toInt();
+    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "application/json", "{\"message\":\"Bad request, value outside available scales\"}");
+
+    String output;
+    StaticJsonDocument<256> doc;
+
+    doc["emptyWeightGramms"] = LevelManagers[scale-1]->getBottleEmptyWeight();
+    doc["fullWeightGramms"] = LevelManagers[scale-1]->getBottleFullWeight();
+
+    serializeJson(doc, output);
+    request->send(200, "application/json", output);
   });
 
   webServer.on("/api/level/current/all", HTTP_GET, [&](AsyncWebServerRequest *request) {

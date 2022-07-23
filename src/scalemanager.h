@@ -27,6 +27,9 @@ class SCALEMANAGER
         float scale = 1.f;                         // hx711 scale calibration
         long tare = 0;                             // hx711 tare value
 
+        float emptyWeightGramms = 0;               // Weight in Gramms of the Empty bottle
+        float fullWeightGramms = 0;                // Weight in Gramms of the Filled bottle
+
         HX711 hx711;
         Preferences preferences;
 
@@ -50,7 +53,14 @@ class SCALEMANAGER
 
         // Calibration of the HX711 weight scale
         void emptyScale();
-        bool setupWeight(int weight);
+        bool applyCalibrateWeight(int weight);
+
+        // Set the bottle weight
+        bool setBottleWeight(int newEmptyWeightGramms, int newFullWeightGramms);
+        
+        // Get the current bottle weights
+        int getBottleEmptyWeight();
+        int getBottleFullWeight();
 
         // helper to get ESP32 runtime
         uint64_t runtime();
