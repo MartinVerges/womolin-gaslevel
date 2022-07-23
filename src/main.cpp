@@ -280,7 +280,7 @@ void loop() {
       event.pressure = 0;
     }
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
-      int sensorValue = LevelManagers[i]->getSensorMedianValue(true);
+      int sensorValue = LevelManagers[i]->getSensorMedianValue();
 
       JsonObject jsonNestedObject = jsonArray.createNestedObject();
       jsonNestedObject["id"] = i;
