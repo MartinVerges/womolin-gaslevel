@@ -1,6 +1,6 @@
 # womolin.gaslevel
 
-DIY project to build a smart fuel sensor for RVs or in other projects.
+DIY project to build a smart gas scale for RVs or in other projects.
 It is based on pressure and is able to measure all types of bottles and their weights.
 
 This project is still in development, it's a working sensor and I'm happy about pull requests to add more functionality, improve existing ones or just feedback.
@@ -11,9 +11,21 @@ After I have long found on the market for camping nothing that is on the one han
 
 Thanks to the ESP32 this can be queried in the future directly via WLAN or Bluetooth. 
 
+## Focus of this Project
+
+The following aspects are the focus of this project:
+
+ * Easy to use and rebuild
+ * Precise in the evaluation of the data
+ * Stand alone usable
+ * Usable in all type of bottles
+
 ## Show it to me!
 <img src="images/sensor_with_holder.jpg?raw=true" alt="Sensor with the 3D printed holder" width="30%">
 <img src="images/mounted_plates.jpg?raw=true" alt="Mounted plates to put bottles on" width="30%">
+
+#### Schematics
+<img src="images/schematic.png?raw=true" alt="Schematic" width="40%">
 
 ## Focus of this Project
 
@@ -47,10 +59,32 @@ To build this sensor yourself, you need:
     > cd womolin.gaslevel
 
     # Build project
-    > platformio run
+    > platformio run -e wemos_d1_mini32
 
     # Upload firmware
-    > platformio run --target upload
+    > platformio run -e wemos_d1_mini32 --target upload
+```
+
+## How to build the UI
+
+As I haven't found good icons with a free license, I choosed the pro version of fontawesome.
+Therefore it's required to have a valid subscription in order to build the UI yourself.
+On github, the resulting `littlefs.bin` is generated with a valid subscription.
+Please feel free to take this one for your sensor.
+
+Set your FontAweSome key:
+```
+npm config set "@fortawesome:registry" https://npm.fontawesome.com/
+npm config set "//npm.fontawesome.com/:_authToken" XXXXXXXXXXXXXXXXXXXX
+```
+
+Build the UI:
+```
+cd ui
+npm install
+npm run build
+cd ..
+pio run -e esp32dev -t buildfs
 ```
 
 ## Operation
@@ -85,7 +119,7 @@ Here you can correct the WLAN data.
 
 womolin.gaslevel (c) by Martin Verges.
 
-womolin.gaslevel is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
+This Project is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 
 You should have received a copy of the license along with this work.
 If not, see <http://creativecommons.org/licenses/by-nc-sa/4.0/>.
