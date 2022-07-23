@@ -67,10 +67,21 @@ To build this sensor yourself, you need:
 
 ## How to build the UI
 
-As I haven't found good icons with a free license, I choosed the pro version of fontawesome.
-Therefore it's required to have a valid subscription in order to build the UI yourself.
 On github, the resulting `littlefs.bin` is generated with a valid subscription.
 Please feel free to take this one for your sensor.
+
+### Upload prebuild file
+
+Here is a example command to upload it.
+Unfortunately this is not simple, if you know a better way, let me know!
+```
+/usr/bin/python3 /path/to/esptool.py" --chip esp32 --port "/dev/ttyUSB0" --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_size detect 3211264 ./littlefs.bin
+```
+
+### Build your own littlefs.bin
+
+As I haven't found good icons with a free license, I choosed the pro version of fontawesome.
+Therefore it's required to have a valid subscription in order to build the UI yourself.
 
 Set your FontAweSome key:
 ```
