@@ -252,7 +252,7 @@ void APIRegisterRoutes() {
     DynamicJsonDocument jsonBuffer(64);
     deserializeJson(jsonBuffer, (const char*)data);
 
-    if (!jsonBuffer["emptyWeightGramms"].is<int>() || !jsonBuffer["emptyWeightGramms"].is<int>()) {
+    if (!jsonBuffer["emptyWeightGramms"].is<int>() || !jsonBuffer["fullWeightGramms"].is<int>()) {
       return request->send(422, "application/json", "{\"message\":\"Invalid data\"}");
     }
 
