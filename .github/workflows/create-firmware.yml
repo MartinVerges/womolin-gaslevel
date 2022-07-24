@@ -25,21 +25,45 @@ jobs:
 
     - name: Building a firmware for ESP32
       run: |
-        pio run
-        pio run -t buildfs
-# produces ${{ github.workspace }}/.pio/build/esp32dev/firmware.bin
-# produces ${{ github.workspace }}/.pio/build/esp32dev/littlefs.bin
+        pio run -e wemos_d1_mini32
+        pio run -e wemos_d1_mini32 -t buildfs
+# produces ${{ github.workspace }}/.pio/build/wemos_d1_mini32/firmware.bin
+# produces ${{ github.workspace }}/.pio/build/wemos_d1_mini32/littlefs.bin
+# produces ${{ github.workspace }}/.pio/build/wemos_d1_mini32/partitions.bin
+# produces ~/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_80m.bin
+# produces ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
 
     - name: 'Upload firmware Artifact'
       uses: actions/upload-artifact@v2
       with:
         name: firmware.bin
         path: |
-          ${{ github.workspace }}/.pio/build/esp32dev/firmware.bin
+          ${{ github.workspace }}/.pio/build/wemos_d1_mini32/firmware.bin
 
     - name: 'Upload littlefs Artifact'
       uses: actions/upload-artifact@v2
       with:
         name: littlefs.bin
         path: |
-          ${{ github.workspace }}/.pio/build/esp32dev/littlefs.bin
+          ${{ github.workspace }}/.pio/build/wemos_d1_mini32/littlefs.bin
+
+    - name: 'Upload partitions Artifact'
+      uses: actions/upload-artifact@v2
+      with:
+        name: partitions.bin
+        path: |
+          ${{ github.workspace }}/.pio/build/wemos_d1_mini32/partitions.bin
+
+    - name: 'Upload partitions Artifact'
+      uses: actions/upload-artifact@v2
+      with:
+        name: bootloader_dio_80m.bin
+        path: |
+          ~/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_80m.bin
+
+    - name: 'Upload partitions Artifact'
+      uses: actions/upload-artifact@v2
+      with:
+        name: boot_app0.bin
+        path: |
+          ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
