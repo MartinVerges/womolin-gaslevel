@@ -24,6 +24,9 @@ The following aspects are the focus of this project:
 <img src="images/sensor_with_holder.jpg?raw=true" alt="Sensor with the 3D printed holder" width="30%">
 <img src="images/mounted_plates.jpg?raw=true" alt="Mounted plates to put bottles on" width="30%">
 
+#### The UI
+<img src="images/status.png?raw=true" alt="Status" width="20%"><img src="images/calibration1.png?raw=true" alt="Calibration" width="20%"><img src="images/calibration2.png?raw=true" alt="Calibration" width="20%"><img src="images/wifi1.png?raw=true" alt="Known Wifi AP list" width="20%"><img src="images/wifi2.png?raw=true" alt="Available APs in range" width="20%"><img src="images/wifi3.png?raw=true" alt="Add new Wifi AP" width="20%"><img src="images/settings.png?raw=true" alt="Settings" width="20%"><img src="images/ota.png?raw=true" alt="OTA Over the Air updates" width="20%">
+
 #### Schematics
 <img src="images/schematic.png?raw=true" alt="Schematic" width="40%">
 
@@ -49,6 +52,11 @@ To build this sensor yourself, you need:
  
  In addition you need some few small cables and soldering equipment to build the circuit.
 
+## Webinstaller
+
+To make it super simple, our pre build firmware can be uploaded to your ESP32 using our Webinstaller.
+You can find it at [https://webinstaller.womolin.de](https://webinstaller.womolin.de).
+
 ## How to build this PlatformIO based project
 
 1. [Install PlatformIO Core](http://docs.platformio.org/page/core.html)
@@ -73,7 +81,6 @@ Please feel free to take this one for your sensor.
 ### Upload prebuild file
 
 Here is a example command to upload it.
-Unfortunately this is not simple, if you know a better way, let me know!
 ```
 /usr/bin/python3 /path/to/esptool.py" --chip esp32 --port "/dev/ttyUSB0" --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_size detect 3211264 ./littlefs.bin
 ```

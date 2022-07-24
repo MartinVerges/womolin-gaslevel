@@ -5,6 +5,7 @@
 
   // ******* SHOW LEVEL ******** //
   let level = undefined;
+  //level = [ 77, 22 ]
   onMount(async () => { 
     if (!!window.EventSource) {
       var source = new EventSource('/api/events');
