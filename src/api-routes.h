@@ -249,7 +249,7 @@ void APIRegisterRoutes() {
     if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "application/json", "{\"message\":\"Bad request, value outside available scales\"}");
 
     // Calibration - reference weight
-    DynamicJsonDocument jsonBuffer(64);
+    DynamicJsonDocument jsonBuffer(128);
     deserializeJson(jsonBuffer, (const char*)data);
 
     if (!jsonBuffer["emptyWeightGramms"].is<int>() || !jsonBuffer["fullWeightGramms"].is<int>()) {
@@ -258,7 +258,8 @@ void APIRegisterRoutes() {
 
     int empty = jsonBuffer["emptyWeightGramms"].as<int>();
     int full = jsonBuffer["fullWeightGramms"].as<int>();
-    if (empty <= 0 || full <= 0 ) return request->send(422, "application/json", "{\"message\":\"Invalid data\"}");
+    if (empty <= 0) return request->send(422, "application/json", "{\"message\":\"Invalid data: emptyWeightGramms\"}");
+    else if (full <= 0 ) return request->send(422, "application/json", "{\"message\":\"Invalid data: fullWeightGramms\"}");
     else {
       if (LevelManagers[scale-1]->setBottleWeight(empty, full)) {
         request->send(200, "application/json", "{\"message\":\"New bottle weight configured\"}");
