@@ -6,7 +6,17 @@
   // ******* SHOW LEVEL ******** //
   let level = undefined;
   //level = [ 77, 22 ]
-  onMount(async () => { 
+  onMount(async () => {
+    // initial level
+    const response = await fetch(`/api/level/current/all`).catch(error => console.log(error));
+    if(response.ok) level = await response.json();
+    else {
+      toast.push(`Error ${response.status} ${response.statusText}<br>Unable to request current level.`, variables.toast.error)
+    }
+  });
+
+  onMount(async () => {
+    // dynamic refreshing level
     if (!!window.EventSource) {
       var source = new EventSource('/api/events');
 
@@ -34,7 +44,6 @@
       }, false);
     }
   })
-
 </script>
 
 <svelte:head>

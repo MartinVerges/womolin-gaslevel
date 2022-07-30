@@ -72,8 +72,8 @@ void SCALEMANAGER::begin(String nvs) {
   } else {
     scale = preferences.getFloat("scale", 1.f);
     tare = preferences.getLong("tare", 0);
-    emptyWeightGramms = preferences.getFloat("", 5500.f); // 11Kg bottle by default is 5Kg empty
-    fullWeightGramms = preferences.getFloat("", 11000.f); // 11Kg bottle by default
+    emptyWeightGramms = preferences.getUInt("", 5500); // 11Kg bottle by default is 5Kg empty
+    fullWeightGramms = preferences.getUInt("", 16500); // 11Kg bottle by default
     Serial.printf("[SCALE] Successfully recovered data. Scale = %f with offset %ld\n", scale, tare);
     hx711.set_scale(scale);
     hx711.set_offset(tare);
@@ -100,7 +100,9 @@ int SCALEMANAGER::getCalculatedPercentage(bool cached) {
   } else if (!cached) {
     val = (val * 10 + getSensorMedianValue(false)) / 11;
   }
-  int pct = (int)((val - emptyWeightGramms) / fullWeightGramms * 100);
+  u_int32_t currentGasWeight = val - emptyWeightGramms;
+  u_int32_t maxGasWeight = fullWeightGramms - emptyWeightGramms;
+  int pct = (int)((float)currentGasWeight / (float)maxGasWeight * 100.f);
   if (pct < 0) return 0;
   if (pct > 100) return 100;
   return pct;
@@ -118,9 +120,9 @@ bool SCALEMANAGER::applyCalibrateWeight(int weight) {
   return writeToNVS();
 }
 
-bool SCALEMANAGER::setBottleWeight(int newEmptyWeightGramms, int newFullWeightGramms) {
-  emptyWeightGramms = (float)newEmptyWeightGramms;
-  fullWeightGramms = (float)newFullWeightGramms;
+bool SCALEMANAGER::setBottleWeight(u_int32_t newEmptyWeightGramms, u_int32_t newFullWeightGramms) {
+  emptyWeightGramms = newEmptyWeightGramms;
+  fullWeightGramms = newFullWeightGramms;
   bool ret = writeToNVS();
   if (ret) {
     Serial.printf("[SCALE] New bottle weight configured. Empty = %d, Full = %d\n", newEmptyWeightGramms, newFullWeightGramms);
