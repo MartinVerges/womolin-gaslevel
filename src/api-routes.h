@@ -360,8 +360,16 @@ void APIRegisterRoutes() {
     request->send(200, "application/json", output);
   });
 
+  File tmp = LittleFS.open("/index.html");
+  time_t cr = tmp.getLastWrite();
+  tmp.close();
+  struct tm * timeinfo = gmtime(&cr);
+//  char buffer [80];
+//  strftime(buffer, 80, "%a, %d %b %Y %H:%M:%S %Z", timeinfo);
+
   webServer.serveStatic("/", LittleFS, "/")
     .setCacheControl("max-age=86400")
+    .setLastModified(timeinfo)
     .setDefaultFile("index.html");
 
   webServer.onNotFound([&](AsyncWebServerRequest *request) {
