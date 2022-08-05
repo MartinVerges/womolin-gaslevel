@@ -72,8 +72,8 @@ void SCALEMANAGER::begin(String nvs) {
   } else {
     scale = preferences.getFloat("scale", 1.f);
     tare = preferences.getLong("tare", 0);
-    emptyWeightGramms = preferences.getUInt("", 5500); // 11Kg bottle by default is 5Kg empty
-    fullWeightGramms = preferences.getUInt("", 16500); // 11Kg bottle by default
+    emptyWeightGramms = preferences.getUInt("", 5500); // 11Kg alu bottle by default is 5Kg empty
+    fullWeightGramms = preferences.getUInt("", 16500); // 11Kg alu bottle by default
     Serial.printf("[SCALE] Successfully recovered data. Scale = %f with offset %ld\n", scale, tare);
     hx711.set_scale(scale);
     hx711.set_offset(tare);
@@ -94,15 +94,14 @@ int SCALEMANAGER::getSensorMedianValue(bool cached) {
 }
 
 int SCALEMANAGER::getCalculatedPercentage(bool cached) {
-  int val = lastMedian;
-  if (!cached && val == 0) {
-    val = getSensorMedianValue(false);
-  } else if (!cached) {
-    val = (val * 10 + getSensorMedianValue(false)) / 11;
-  }
-  u_int32_t currentGasWeight = val - emptyWeightGramms;
+  int val = 0;
+  if (cached) val = lastMedian;
+  else val = getSensorMedianValue(false);
+
+  u_int32_t currentGasWeight = (val > emptyWeightGramms) ? val - emptyWeightGramms : 0;
   u_int32_t maxGasWeight = fullWeightGramms - emptyWeightGramms;
   int pct = (int)((float)currentGasWeight / (float)maxGasWeight * 100.f);
+  // Serial.printf("DEBUG - %d | %d | %d | %d | %d | %d \n", val, pct, currentGasWeight, maxGasWeight, fullWeightGramms, emptyWeightGramms);
   if (pct < 0) return 0;
   if (pct > 100) return 100;
   return pct;
