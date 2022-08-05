@@ -75,7 +75,43 @@ void MQTTclient::connect() {
       1
     );
     sleep(0.5);
-    Serial.println(client.state());
+
+    switch (client.state()) {
+    case MQTT_CONNECTION_TIMEOUT:
+      Serial.println(F("[MQTT] ... connection time out"));
+      break;
+    case MQTT_CONNECTION_LOST:
+      Serial.println(F("[MQTT] ... connection lost"));
+      break;
+    case MQTT_CONNECT_FAILED:
+      Serial.println(F("[MQTT] ... connection failed"));
+      break;
+    case MQTT_DISCONNECTED:
+      Serial.println(F("[MQTT] ... disconnected"));
+      break;
+    case MQTT_CONNECTED:
+      Serial.println(F("[MQTT] ... connected"));
+      break;
+    case MQTT_CONNECT_BAD_PROTOCOL:
+      Serial.println(F("[MQTT] ... connection error: bad protocol"));
+      break;
+    case MQTT_CONNECT_BAD_CLIENT_ID:
+      Serial.println(F("[MQTT] ... connection error: bad client ID"));
+      break;
+    case MQTT_CONNECT_UNAVAILABLE:
+      Serial.println(F("[MQTT] ... connection error: unavailable"));
+      break;
+    case MQTT_CONNECT_BAD_CREDENTIALS:
+      Serial.println(F("[MQTT] ... connection error: bad credentials"));
+      break;
+    case MQTT_CONNECT_UNAUTHORIZED:
+      Serial.println(F("[MQTT] ... connection error: unauthorized"));
+      break;
+    default:
+      Serial.print(F("[MQTT] ... connection error: unknown code "));
+      Serial.println(client.state());
+      break;
+    }
   }
 }
 void MQTTclient::disconnect() {
