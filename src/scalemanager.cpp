@@ -50,8 +50,8 @@ bool SCALEMANAGER::writeToNVS() {
     preferences.clear();
     preferences.putFloat("scale", hx711.get_scale());
     preferences.putLong("tare", hx711.get_offset());
-    preferences.putFloat("emptyWeight", emptyWeightGramms);
-    preferences.putFloat("fullWeight", fullWeightGramms);
+    preferences.putUInt("emptyWeight", emptyWeightGramms);
+    preferences.putUInt("fullWeight", fullWeightGramms);
     preferences.end();
     return true;
   } else {
@@ -72,9 +72,10 @@ void SCALEMANAGER::begin(String nvs) {
   } else {
     scale = preferences.getFloat("scale", 1.f);
     tare = preferences.getLong("tare", 0);
-    emptyWeightGramms = preferences.getUInt("", 5500); // 11Kg alu bottle by default is 5Kg empty
-    fullWeightGramms = preferences.getUInt("", 16500); // 11Kg alu bottle by default
     Serial.printf("[SCALE] Successfully recovered data. Scale = %f with offset %ld\n", scale, tare);
+    emptyWeightGramms = preferences.getUInt("emptyWeight", 5500); // 11Kg alu bottle by default is 5Kg empty
+    fullWeightGramms = preferences.getUInt("fullWeight", 16500);  // 11Kg alu bottle by default
+    Serial.printf("[SCALE] Bottle configuration: Empty = %dg Full = %dg\n", emptyWeightGramms, fullWeightGramms);
     hx711.set_scale(scale);
     hx711.set_offset(tare);
     preferences.end();
