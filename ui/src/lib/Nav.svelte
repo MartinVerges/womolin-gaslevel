@@ -10,6 +10,7 @@
     import { faScaleBalanced } from '@fortawesome/pro-solid-svg-icons/faScaleBalanced';
     import { faFileImport } from '@fortawesome/pro-solid-svg-icons/faFileImport';
     import { faRectangleTerminal } from '@fortawesome/pro-solid-svg-icons/faRectangleTerminal'
+    import { faMemoCircleInfo } from '@fortawesome/pro-solid-svg-icons/faMemoCircleInfo'
     import { page } from '$app/stores';
     let path;
     $: path = $page.url.pathname;
@@ -45,11 +46,6 @@
             <li>
               <a href="/update/" class="nav-link {path === '/update/' ? 'text-secondary' : 'text-white'}">
                 <Fa icon={faFileImport} size="lg" class="bi d-block mx-auto mb-1" />Update
-              </a>
-            </li>
-            <li>
-              <a href="/console/" class="nav-link {path === '/console/' ? 'text-secondary' : 'text-white'}">
-                <Fa icon={faRectangleTerminal} size="lg" class="bi d-block mx-auto mb-1" />Console
               </a>
             </li>
           </ul>
