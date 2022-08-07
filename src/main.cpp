@@ -54,6 +54,9 @@ extern "C" {
 Adafruit_BMP085_Unified bmp180 = Adafruit_BMP085_Unified(10085);
 bool bmp180_found = false;
 
+#include <copy2webserial.h>
+Copy2WebSerialClass copy2WebSerial;
+
 void IRAM_ATTR ISR_button1() {
   button1.pressed = true;
 }
@@ -112,6 +115,8 @@ void initWifiAndServices() {
   WifiManager.startBackgroundTask();
   WifiManager.attachWebServer(&webServer);
   WifiManager.fallbackToSoftAp(preferences.getBool("enableSoftAp", true));
+
+  copy2WebSerial.begin(&webServer);
 
   APIRegisterRoutes();
   webServer.begin();
