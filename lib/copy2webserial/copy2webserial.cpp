@@ -34,7 +34,7 @@ Copy2WebSerialClass::Copy2WebSerialClass() {
   xTaskCreate(
     SerialCopyBgTask,
     "serialCopy",
-    1000,           // Stack size in words
+    4000,           // Stack size in words
     this,           // Task input parameter
     0,              // Priority of the task
     &bgTaskHandle   // Task handle.
