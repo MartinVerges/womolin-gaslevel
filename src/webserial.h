@@ -14,15 +14,9 @@
 #define WEBSERIAL_h
 
 #include <ESPAsyncWebServer.h>
-// #include <SoftwareSerial.h>
-
-void SerialCopyBgTask(void* param);
 
 class WebSerialClass {
     public:
-//        WebSerialClass();
-//        virtual ~WebSerialClass();
-
         void begin(AsyncWebServer *server, const char* url = "/api/webserial");
 
         void print(int c);
@@ -48,13 +42,8 @@ class WebSerialClass {
         size_t printf(const char *format, ...);
 
     private:
-//        void task();
-//        static void startTaskImpl(void*);
-
-//        SoftwareSerial * serialIn;
         AsyncWebSocket * webSocket;
         AsyncWebServer * webServer = nullptr;
-//        TaskHandle_t bgTaskHandle;
 };
 
 #endif // WEBSERIAL_h

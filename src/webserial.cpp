@@ -13,53 +13,6 @@
 #include "log.h"
 #include <webserial.h>
 
-/*
-void WebSerialClass::task() {
-  yield();
-  delay(1000); // wait a short time until everything is setup before executing the loop forever
-  yield();
-
-  const TickType_t xDelay = 10 / portTICK_PERIOD_MS;
-  String buffer = "";
-
-  for(;;) {
-    yield();
-    while (this->serialIn->available() > 0) {
-      int data = Serial.read();
-      if (data >= 0) buffer.concat(data);
-      if (data == '\n') {
-        this->write(buffer);
-        buffer = String();
-      }
-//      if (data >= 0) this->write(data);
-    }
-    yield();
-    //vTaskDelay(xDelay);
-  }
-}
-
-void WebSerialClass::startTaskImpl(void * _this) {
-  ((WebSerialClass*)_this)->task();
-}
-
-WebSerialClass::WebSerialClass() {
-  //serialIn->begin(115200, SWSERIAL_8N1, TXD, RXD);
-
-  xTaskCreate(
-    this->startTaskImpl,
-    "serialCopy",
-    4000,           // Stack size in words
-    this,           // Task input parameter
-    0,              // Priority of the task
-    &bgTaskHandle   // Task handle.
-  );
-}
-
-WebSerialClass::~WebSerialClass() {
-  //vTaskDelete(bgTaskHandle);
-}
-*/
-
 void WebSerialClass::begin(AsyncWebServer *server, const char* url) {
   webServer = server;
 
