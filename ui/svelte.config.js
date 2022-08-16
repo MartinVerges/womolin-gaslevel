@@ -14,6 +14,10 @@ const config = {
 			precompress: false
 		}),
 
+		files: {
+			assets: 'static'
+		},
+
 		trailingSlash: 'always',
 
 		routes: filepath => {

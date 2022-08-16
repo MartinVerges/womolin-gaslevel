@@ -27,6 +27,8 @@
 #include <SPI.h>
 #include <Wire.h>
 
+bool otaRunning = false;
+
 RTC_DATA_ATTR struct timing_t {
   // Check Services like MQTT, ...
   uint64_t lastServiceCheck = 0;               // last millis() from ServiceCheck

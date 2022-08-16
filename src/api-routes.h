@@ -20,6 +20,8 @@
 #include <Update.h>
 #include <esp_ota_ops.h>
 
+extern bool otaRunning;
+
 extern bool enableWifi;
 extern bool enableBle;
 extern bool enableMqtt;
@@ -62,25 +64,28 @@ void APIRegisterRoutes() {
         if(!request->authenticate("ota", otaPassword.c_str())) {
           return request->send(401, "application/json", "{\"message\":\"Invalid OTA password provided!\"}");
         }
-      } else Serial.println(F("[OTA] No password configured, no authentication requested!"));
-    } else Serial.println(F("[OTA] Unable to load password from NVS."));
+      } else LOG_INFO_LN(F("[OTA] No password configured, no authentication requested!"));
+    } else LOG_INFO_LN(F("[OTA] Unable to load password from NVS."));
 
     if (!index) {
-      Serial.print(F("[OTA] Begin firmware update with filename: "));
-      Serial.println(filename);
+      otaRunning = true;
+      LOG_INFO(F("[OTA] Begin firmware update with filename: "));
+      LOG_INFO_LN(filename);
       // if filename includes spiffs|littlefs, update the spiffs|littlefs partition
       int cmd = (filename.indexOf("spiffs") > -1 || filename.indexOf("littlefs") > -1) ? U_SPIFFS : U_FLASH;
       if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
-        Serial.print(F("[OTA] Error: "));
+        LOG_INFO(F("[OTA] Error: "));
         Update.printError(Serial);
         request->send(500, "application/json", "{\"message\":\"Unable to begin firmware update!\"}");
+        otaRunning = false;
       }
     }
 
     if (Update.write(data, len) != len) {
-      Serial.print(F("[OTA] Error: "));
+      LOG_INFO(F("[OTA] Error: "));
       Update.printError(Serial);
       request->send(500, "application/json", "{\"message\":\"Unable to write firmware update data!\"}");
+      otaRunning = false;
     }
 
     if (final) {
@@ -92,15 +97,16 @@ void APIRegisterRoutes() {
         serializeJson(doc, output);
         request->send(500, "application/json", output);
 
-        Serial.println("[OTA] Error when calling calling Update.end().");
+        LOG_INFO_LN("[OTA] Error when calling calling Update.end().");
         Update.printError(Serial);
+        otaRunning = false;
       } else {
-        Serial.println("[OTA] Firmware update successful.");
+        LOG_INFO_LN("[OTA] Firmware update successful.");
         request->send(200, "application/json", "{\"message\":\"Please wait while the device reboots!\"}");
         yield();
         delay(250);
 
-        Serial.println("[OTA] Update complete, rebooting now!");
+        LOG_INFO_LN("[OTA] Update complete, rebooting now!");
         Serial.flush();
         ESP.restart();
       }
@@ -109,7 +115,7 @@ void APIRegisterRoutes() {
 
   events.onConnect([&](AsyncEventSourceClient *client){
     if(client->lastId()){
-      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+      LOG_INFO_F("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
     }
     client->send("connected", NULL, millis(), 1000);
   });
