@@ -57,6 +57,11 @@ To build this sensor yourself, you need:
 To make it super simple, our pre build firmware can be uploaded to your ESP32 using our Webinstaller.
 You can find it at [https://webinstaller.womolin.de](https://webinstaller.womolin.de).
 
+## OTA (Over-the-Air) Firmware files
+
+If you want to update an already installed Sensor, you can upload the binarys directly to the sensor using the Web UI.
+The latest version (current git main branch) is available at [https://s3.womolin.de/webinstaller/gaslevel-latest/firmware.bin](https://s3.womolin.de/webinstaller/gaslevel-latest/firmware.bin) and [https://s3.womolin.de/webinstaller/gaslevel-latest/littlefs.bin](https://s3.womolin.de/webinstaller/gaslevel-latest/littlefs.bin).
+
 ## How to build this PlatformIO based project
 
 1. [Install PlatformIO Core](http://docs.platformio.org/page/core.html)
