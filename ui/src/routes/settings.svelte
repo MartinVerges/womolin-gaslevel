@@ -52,7 +52,7 @@
 </FormGroup>
 <FormGroup> 
     <Label for="otaPassword">OTA (Over The Air) firmware update password</Label>   
-    <Input id="otaPassword" bind:value={config.otaPassword} placeholder="OTA Password" maxlength="32" />
+    <Input id="otaPassword" bind:value={config.otapassword} placeholder="OTA Password" maxlength="32" />
 </FormGroup>
 <FormGroup>
     <Input id="enablemqtt" bind:checked={config.enablemqtt} type="checkbox" label="Publish to MQTT Broker" />

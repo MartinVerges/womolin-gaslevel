@@ -33,21 +33,46 @@ class SCALEMANAGER
         HX711 hx711;
         Preferences preferences;
 
+        struct timeing_t {
+            // Update Sensor data in loop()
+            uint64_t lastSensorRead = 0;                 // last millis() from Sensor read
+            const uint32_t sensorIntervalMs = 5000;      // Interval in ms to execute code
+        } timing;
+
         // Write current leveldata to non volatile storage
         bool writeToNVS();
+
+        // Read Median(10) raw value from sensor
+        int getSensorMedianValue(bool cached = false);
+
+        // Set the level variable to 0-100 according to the current state of lastMedian
+        // You need to call getSensorMedianValue() before calculateLevel() to update lastMedian
+        uint8_t calculateLevel();
+
+        // The current level set by calculateLevel()
+        uint8_t level = 0;
+
+        // The current amount of GAS available in the bottle (without the weight of the bottle)
+        uint32_t currentGasWeightGramms;
 
 	public:
 		SCALEMANAGER(uint8_t dout, uint8_t pd_sck);
 		virtual ~SCALEMANAGER();
 
+        // Get the current Gas weight inside the bottle calculcated and updated in loop()
+        uint32_t getGasWeight() { return currentGasWeightGramms; }
+
+        // Get the last Median reading value updated in loop()
+        int getLastMedian() { return lastMedian; }
+
+        // Get the current level calculcated and updated in loop()
+        uint8_t getLevel() { return level; }
+
+        // call loop
+        void loop();
+
         // Initialize the Webserver
 		void begin(String nvs);
-
-        // Read Median(10) raw value from sensor
-        int getSensorMedianValue(bool cached = false);
-
-        // Calculate current level in percent. Requires valid level setup.
-        int getCalculatedPercentage(bool cached = false);
 
         bool isConfigured();
 

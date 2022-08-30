@@ -56,11 +56,6 @@ void MQTTclient::prepare(String host, uint16_t port, String topic, String user, 
   }
 }
 
-void MQTTclient::registerEvents() {
-//  client.onDisconnect(onMqttDisconnect);
-//  client.onMessage(onMqttMessage);
-}
-
 void MQTTclient::connect() {
   if (!enableMqtt) {
     LOG_INFO_LN(F("[MQTT] disabled!"));
@@ -119,44 +114,3 @@ void MQTTclient::connect() {
 void MQTTclient::disconnect() {
   client.disconnect();
 }
-
-/*
-void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
-  LOG_INFO(F("[MQTT] Disconnected from MQTT with reason: "));
-  LOG_INFO_LN(static_cast<uint8_t>(reason));
-
-  if (reason == AsyncMqttClientDisconnectReason::TCP_DISCONNECTED) {
-    LOG_INFO_LN(F("[MQTT] ==> TCP disconnected."));
-  } else if (reason == AsyncMqttClientDisconnectReason::MQTT_UNACCEPTABLE_PROTOCOL_VERSION) {
-    LOG_INFO_LN(F("[MQTT] ==> Unacceptable protocol version."));
-  } else if (reason == AsyncMqttClientDisconnectReason::MQTT_IDENTIFIER_REJECTED) {
-    LOG_INFO_LN(F("[MQTT] ==> Identifier rejected."));
-  } else if (reason == AsyncMqttClientDisconnectReason::MQTT_SERVER_UNAVAILABLE) {
-    LOG_INFO_LN(F("[MQTT] ==> The server is unavailable."));
-  } else if (reason == AsyncMqttClientDisconnectReason::MQTT_MALFORMED_CREDENTIALS) {
-    LOG_INFO_LN(F("[MQTT] ==> Malformed credentials."));
-  } else if (reason == AsyncMqttClientDisconnectReason::MQTT_NOT_AUTHORIZED) {
-    LOG_INFO_LN(F("[MQTT] ==> Not authorized, credentials required."));
-  } else if (reason == AsyncMqttClientDisconnectReason::TLS_BAD_FINGERPRINT) {
-    LOG_INFO_LN(F("[MQTT] ==> TLS bad fingerprint."));
-  }
-}
-
-void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-  LOG_INFO_LN("Publish received.");
-  LOG_INFO("  topic: ");
-  LOG_INFO_LN(topic);
-  LOG_INFO("  qos: ");
-  LOG_INFO_LN(properties.qos);
-  LOG_INFO("  dup: ");
-  LOG_INFO_LN(properties.dup);
-  LOG_INFO("  retain: ");
-  LOG_INFO_LN(properties.retain);
-  LOG_INFO("  len: ");
-  LOG_INFO_LN(len);
-  LOG_INFO("  index: ");
-  LOG_INFO_LN(index);
-  LOG_INFO("  total: ");
-  LOG_INFO_LN(total);
-}
-*/

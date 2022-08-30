@@ -163,7 +163,7 @@ void APIRegisterRoutes() {
         enableDac = jsonBuffer["enabledac"].as<boolean>();
       }
 
-      preferences.putString("otaPassword", jsonBuffer["otaPassword"].as<String>());
+      preferences.putString("otaPassword", jsonBuffer["otapassword"].as<String>());
 
       // MQTT Settings
       preferences.putUInt("mqttPort", jsonBuffer["mqttport"].as<uint16_t>());
@@ -203,7 +203,7 @@ void APIRegisterRoutes() {
         doc["enableble"] = enableBle;
         doc["enabledac"] = enableDac;
 
-        doc["otaPassword"] = preferences.getString("otaPassword");
+        doc["otapassword"] = preferences.getString("otaPassword");
 
         // MQTT
         doc["enablemqtt"] = enableMqtt;
@@ -292,13 +292,16 @@ void APIRegisterRoutes() {
 
   webServer.on("/api/level/current/all", HTTP_GET, [&](AsyncWebServerRequest *request) {
     String output;
-    StaticJsonDocument<512> doc;
-    JsonArray array = doc.to<JsonArray>();
+    StaticJsonDocument<1024> jsonDoc;
 
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
-      array.add(LevelManagers[i]->getCalculatedPercentage(true));
+        jsonDoc[i]["id"] = i;
+        jsonDoc[i]["level"] = LevelManagers[i]->getLevel();
+        jsonDoc[i]["gasWeight"] = LevelManagers[i]->getGasWeight();
+        jsonDoc[i]["sensorValue"] = LevelManagers[i]->getLastMedian();
     }
-    serializeJson(doc, output);
+
+    serializeJson(jsonDoc, output);
     request->send(200, "application/json", output);
   });
 
@@ -310,11 +313,50 @@ void APIRegisterRoutes() {
     request->send(200, "application/json", output);
   });
 
+  webServer.on("/api/partition/switch", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
+    [&](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
+    auto next = esp_ota_get_next_update_partition(NULL);
+    auto error = esp_ota_set_boot_partition(next);
+    if (error == ESP_OK) {
+      request->send(200, "application/json", "{\"message\":\"New partition ready for boot\"}");
+    } else {
+      request->send(500, "application/json", "{\"message\":\"Error switching boot partition\"}");
+    }
+  });
+
   webServer.on("/api/esp", HTTP_GET, [&](AsyncWebServerRequest * request) {
     String output;
     DynamicJsonDocument json(2048);
 
-    json["rebootReason"] = esp_reset_reason();
+    JsonObject booting = json.createNestedObject("booting");
+    booting["rebootReason"] = esp_reset_reason();
+    booting["partitionCount"] = esp_ota_get_app_partition_count();
+
+    auto partition = esp_ota_get_boot_partition();
+    JsonObject bootPartition = json.createNestedObject("bootPartition");
+    bootPartition["address"] = partition->address;
+    bootPartition["size"] = partition->size;
+    bootPartition["label"] = partition->label;
+    bootPartition["encrypted"] = partition->encrypted;
+    switch (partition->type) {
+      case ESP_PARTITION_TYPE_APP:  bootPartition["type"] = "app"; break;
+      case ESP_PARTITION_TYPE_DATA: bootPartition["type"] = "data"; break;
+      default: bootPartition["type"] = "any";
+    }
+    bootPartition["subtype"] = partition->subtype;
+
+    partition = esp_ota_get_running_partition();
+    JsonObject runningPartition = json.createNestedObject("runningPartition");
+    runningPartition["address"] = partition->address;
+    runningPartition["size"] = partition->size;
+    runningPartition["label"] = partition->label;
+    runningPartition["encrypted"] = partition->encrypted;
+    switch (partition->type) {
+      case ESP_PARTITION_TYPE_APP:  runningPartition["type"] = "app"; break;
+      case ESP_PARTITION_TYPE_DATA: runningPartition["type"] = "data"; break;
+      default: runningPartition["type"] = "any";
+    }
+    runningPartition["subtype"] = partition->subtype;
 
     JsonObject build = json.createNestedObject("build");
     build["date"] = __DATE__;
@@ -370,13 +412,12 @@ void APIRegisterRoutes() {
   time_t cr = tmp.getLastWrite();
   tmp.close();
   struct tm * timeinfo = gmtime(&cr);
-//  char buffer [80];
-//  strftime(buffer, 80, "%a, %d %b %Y %H:%M:%S %Z", timeinfo);
 
   webServer.serveStatic("/", LittleFS, "/")
     .setCacheControl("max-age=86400")
     .setLastModified(timeinfo)
     .setDefaultFile("index.html");
+
 
   webServer.onNotFound([&](AsyncWebServerRequest *request) {
     if (request->method() == HTTP_OPTIONS) {

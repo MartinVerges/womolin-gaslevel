@@ -47,6 +47,16 @@ uint64_t SCALEMANAGER::runtime() {
   return rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get()) / 1000;
 }
 
+void SCALEMANAGER::loop() {
+  if (runtime() - timing.lastSensorRead >= timing.sensorIntervalMs) {
+    timing.lastSensorRead = runtime();
+    getSensorMedianValue(false); // update lastMedian
+    if (isConfigured()) {
+      calculateLevel();
+    }
+  }
+}
+
 bool SCALEMANAGER::writeToNVS() {
   if (preferences.begin(NVS.c_str(), false)) {
     preferences.clear();
@@ -96,18 +106,16 @@ int SCALEMANAGER::getSensorMedianValue(bool cached) {
   }
 }
 
-int SCALEMANAGER::getCalculatedPercentage(bool cached) {
-  int val = 0;
-  if (cached) val = lastMedian;
-  else val = getSensorMedianValue(false);
-
-  u_int32_t currentGasWeight = (val > emptyWeightGramms) ? val - emptyWeightGramms : 0;
+uint8_t SCALEMANAGER::calculateLevel() {
+  currentGasWeightGramms = (lastMedian > emptyWeightGramms) ? lastMedian - emptyWeightGramms : 0;
   u_int32_t maxGasWeight = fullWeightGramms - emptyWeightGramms;
-  int pct = (int)((float)currentGasWeight / (float)maxGasWeight * 100.f);
-  // LOG_INFO_F("DEBUG - %d | %d | %d | %d | %d | %d \n", val, pct, currentGasWeight, maxGasWeight, fullWeightGramms, emptyWeightGramms);
-  if (pct < 0) return 0;
-  if (pct > 100) return 100;
-  return pct;
+  int pct = (int)((float)currentGasWeightGramms / (float)maxGasWeight * 100.f);
+  // LOG_INFO_F("DEBUG - %d | %d | %d | %d | %d | %d \n", lastMedian, pct, currentGasWeight, maxGasWeight, fullWeightGramms, emptyWeightGramms);
+  if (pct < 0) pct = 0;
+  if (pct > 100) pct = 100;
+
+  level = pct;
+  return level;
 }
 
 void SCALEMANAGER::emptyScale() {

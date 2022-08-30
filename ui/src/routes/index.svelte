@@ -5,12 +5,15 @@
 
   // ******* SHOW LEVEL ******** //
   let level = undefined;
-  //level = [ 77, 22 ]
+  //level = [ { id: ... },... ]
   onMount(async () => {
     // initial level
-    const response = await fetch(`/api/level/current/all`).catch(error => console.log(error));
-    if(response.ok) level = await response.json();
-    else {
+		const response = await fetch(`/api/level/current/all`, {
+      headers: { "Content-type": "application/json" }
+    }).catch(error => console.log(error));
+    if(response.ok) {
+      level = await response.json();
+    } else {
       toast.push(`Error ${response.status} ${response.statusText}<br>Unable to request current level.`, variables.toast.error)
     }
   });
@@ -32,11 +35,7 @@
 
       source.addEventListener('status', function(e) {
         try {
-          let data = JSON.parse(e.data);          
-          level = [];
-          data.forEach((element, i) => {
-            if ('level' in element) level[i] = element.level
-          }); 
+          level = JSON.parse(e.data);          
         } catch (error) {
           console.log(error);
           console.log("Error parsing status", e.data);          
@@ -59,7 +58,7 @@
     {#each {length: level.length} as _, i}
     <div class="col-sm-12">Current level of scale {(i+1)}</div>
     <div class="col-sm-12">
-        <Progress animated value={level[i]} style="height: 5rem;">{level[i]}%</Progress>
+        <Progress animated value={level[i].level} style="height: 5rem;">{level[i].level}%<br>({(level[i].gasWeight/1000).toFixed(2)} Kg)</Progress>
     </div>
     {/each}
 {/if}

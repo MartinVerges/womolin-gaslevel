@@ -248,12 +248,6 @@ void softReset() {
 }
 
 void loop() {
-  if (otaRunning) {
-    LOG_INFO_LN(F("[OTA] Update is running, ..."));
-    sleep(10);
-    return;
-  }
-
   if (button1.pressed) {
     LOG_INFO_LN(F("[EVENT] Button pressed!"));
     button1.pressed = false;
@@ -274,9 +268,13 @@ void loop() {
     }
   }
  
+  if (otaRunning) return sleepOrDelay();
+
+  for (uint8_t i=0; i < LEVELMANAGERS; i++) LevelManagers[i]->loop();
+
   // run regular operation
-  if (runtime() - Timing.lastSensorRead > Timing.sensorInterval) {
-    Timing.lastSensorRead = runtime();
+  if (runtime() - Timing.lastStatusUpdate > Timing.statusUpdateInterval) {
+    Timing.lastStatusUpdate = runtime();
 
     String jsonOutput;
     //StaticJsonDocument<1024> jsonDoc;
@@ -292,36 +290,34 @@ void loop() {
       event.pressure = 0;
     }
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
-      int sensorValue = LevelManagers[i]->getSensorMedianValue();
-
       JsonObject jsonNestedObject = jsonArray.createNestedObject();
       jsonNestedObject["id"] = i;
       jsonNestedObject["airPressure"] = event.pressure;
       jsonNestedObject["temperature"] = temperature;
-      jsonNestedObject["sensorValue"] = sensorValue;
+      jsonNestedObject["sensorValue"] = LevelManagers[i]->getLastMedian();
 
       if (LevelManagers[i]->isConfigured()) {
-        uint8_t level = LevelManagers[i]->getCalculatedPercentage(true);
-        jsonNestedObject["level"] = level;
+        jsonNestedObject["level"] = LevelManagers[i]->getLevel();
+        jsonNestedObject["gasWeight"] = LevelManagers[i]->getGasWeight();
 
         String ident = String("level") + String(i);
-        if (enableDac) dacValue(i+1, level);
-        if (enableBle) updateBleCharacteristic(level);  // FIXME: need to manage multiple levels
+        if (enableDac) dacValue(i+1, LevelManagers[i]->getLevel());
+        if (enableBle) updateBleCharacteristic(LevelManagers[i]->getLevel());  // FIXME: need to manage multiple levels
         if (enableMqtt && Mqtt.isReady()) {
-          Mqtt.client.publish((Mqtt.mqttTopic + "/level" + String(i+1)).c_str(), String(level).c_str(), true);
-          Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), String(sensorValue).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/level" + String(i+1)).c_str(), String(LevelManagers[i]->getLevel()).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), String(LevelManagers[i]->getLastMedian()).c_str(), true);
           Mqtt.client.publish((Mqtt.mqttTopic + "/airPressure" + String(i+1)).c_str(), String(event.pressure).c_str(), true);
           Mqtt.client.publish((Mqtt.mqttTopic + "/temperature" + String(i+1)).c_str(), String(temperature).c_str(), true);
         }
 
         LOG_INFO_F("[SENSOR] Current level of %d. sensor is %d (raw %d)\n",
-          i+1, level, LevelManagers[i]->getSensorMedianValue(true)
+          i+1, LevelManagers[i]->getLevel(), LevelManagers[i]->getLastMedian()
         );
       } else {
         if (enableDac) dacValue(i+1, 0);
         if (enableBle) updateBleCharacteristic(0);  // FIXME
         LOG_INFO_F("[SENSOR] Sensor %d not configured, please run the setup! (Raw sensor value %d)\n",
-          i+1, (int)LevelManagers[i]->getSensorMedianValue(true)
+          i+1, (int)LevelManagers[i]->getLastMedian()
         );
       }
     }
