@@ -306,6 +306,7 @@ void loop() {
         if (enableMqtt && Mqtt.isReady()) {
           Mqtt.client.publish((Mqtt.mqttTopic + "/level" + String(i+1)).c_str(), String(LevelManagers[i]->getLevel()).c_str(), true);
           Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), String(LevelManagers[i]->getLastMedian()).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/gasWeight" + String(i+1)).c_str(), String(LevelManagers[i]->getGasWeight()).c_str(), true);
           Mqtt.client.publish((Mqtt.mqttTopic + "/airPressure" + String(i+1)).c_str(), String(event.pressure).c_str(), true);
           Mqtt.client.publish((Mqtt.mqttTopic + "/temperature" + String(i+1)).c_str(), String(temperature).c_str(), true);
         }
