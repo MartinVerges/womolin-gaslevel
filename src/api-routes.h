@@ -164,6 +164,7 @@ void APIRegisterRoutes() {
       }
 
       preferences.putString("otaPassword", jsonBuffer["otapassword"].as<String>());
+      ArduinoOTA.setPassword(jsonBuffer["otapassword"].as<String>().c_str());
 
       // MQTT Settings
       preferences.putUInt("mqttPort", jsonBuffer["mqttport"].as<uint16_t>());
