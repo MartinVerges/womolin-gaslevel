@@ -23,7 +23,7 @@ class SCALEMANAGER
 	private:
         String NVS = "gaslevel";                        // NVS Storage to write and read values
 
-        uint32_t lastMedian = 0;                        // last reading median value
+        uint64_t lastMedian = 0;                        // last reading median value
         double scale = 1.f;                             // hx711 scale calibration
         uint64_t tare = 0;                              // hx711 tare value
 
