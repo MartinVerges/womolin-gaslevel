@@ -28,16 +28,22 @@ extern "C" {
 // Store some history in the RTC RAM that survives deep sleep
 #define MAX_RTC_HISTORY 100                        // store some data points to provide short term history
 typedef struct {
-    int currentLevel;
-    int sensorValue;
+    uint32_t currentLevel;
+    uint32_t sensorValue;
     uint64_t timestamp;
 } sensorReadings;
 RTC_DATA_ATTR sensorReadings readingHistory[MAX_RTC_HISTORY];
-RTC_DATA_ATTR int readingHistoryCount = 0;
+RTC_DATA_ATTR uint32_t readingHistoryCount = 0;
 
 SCALEMANAGER::SCALEMANAGER(uint8_t dout, uint8_t pd_sck) {  
   hx711.begin(dout, pd_sck, 64);
   hx711.set_gain(128);
+}
+
+SCALEMANAGER::SCALEMANAGER(uint8_t dout, uint8_t pd_sck, uint8_t gain) {  
+  hx711.begin(dout, pd_sck, 64);
+  if (gain == 128 or gain == 64 or gain == 32) hx711.set_gain(gain);
+  else hx711.set_gain(128);
 }
 
 SCALEMANAGER::~SCALEMANAGER() {
@@ -60,8 +66,8 @@ void SCALEMANAGER::loop() {
 bool SCALEMANAGER::writeToNVS() {
   if (preferences.begin(NVS.c_str(), false)) {
     preferences.clear();
-    preferences.putFloat("scale", hx711.get_scale());
-    preferences.putLong("tare", hx711.get_offset());
+    preferences.putDouble("scale", hx711.get_scale());
+    preferences.putULong64("tare", hx711.get_offset());
     preferences.putUInt("emptyWeight", emptyWeightGramms);
     preferences.putUInt("fullWeight", fullWeightGramms);
     preferences.end();
@@ -82,8 +88,8 @@ void SCALEMANAGER::begin(String nvs) {
   if (!preferences.begin(NVS.c_str(), false)) {
     LOG_INFO_LN(F("[SCALE] Error opening NVS Namespace, giving up..."));
   } else {
-    scale = preferences.getFloat("scale", 1.f);
-    tare = preferences.getLong("tare", 0);
+    scale = preferences.getDouble("scale", 1.f);
+    tare = preferences.getLong64("tare", 0);
     LOG_INFO_F("[SCALE] Successfully recovered data. Scale = %f with offset %ld\n", scale, tare);
     emptyWeightGramms = preferences.getUInt("emptyWeight", 5500); // 11Kg alu bottle by default is 5Kg empty
     fullWeightGramms = preferences.getUInt("fullWeight", 16500);  // 11Kg alu bottle by default
@@ -94,7 +100,7 @@ void SCALEMANAGER::begin(String nvs) {
   }
 }
 
-int SCALEMANAGER::getSensorMedianValue(bool cached) {
+uint32_t SCALEMANAGER::getSensorMedianValue(bool cached) {
   if (cached) return lastMedian;
   if (hx711.wait_ready_retry(100, 5)) {
     //lastMedian = (int)floor(hx711.get_median_value(10) / 1000);
@@ -108,8 +114,8 @@ int SCALEMANAGER::getSensorMedianValue(bool cached) {
 
 uint8_t SCALEMANAGER::calculateLevel() {
   currentGasWeightGramms = (lastMedian > emptyWeightGramms) ? lastMedian - emptyWeightGramms : 0;
-  u_int32_t maxGasWeight = fullWeightGramms - emptyWeightGramms;
-  int pct = (int)((float)currentGasWeightGramms / (float)maxGasWeight * 100.f);
+  uint32_t maxGasWeight = fullWeightGramms - emptyWeightGramms;
+  uint32_t pct = (int)((float)currentGasWeightGramms / (float)maxGasWeight * 100.f);
   // LOG_INFO_F("DEBUG - %d | %d | %d | %d | %d | %d \n", lastMedian, pct, currentGasWeight, maxGasWeight, fullWeightGramms, emptyWeightGramms);
   if (pct < 0) pct = 0;
   if (pct > 100) pct = 100;
@@ -125,12 +131,12 @@ void SCALEMANAGER::emptyScale() {
   hx711.tare();
 }
 
-bool SCALEMANAGER::applyCalibrateWeight(int weight) {
+bool SCALEMANAGER::applyCalibrateWeight(uint32_t weight) {
   hx711.set_scale(hx711.get_units(10) / weight);
   return writeToNVS();
 }
 
-bool SCALEMANAGER::setBottleWeight(u_int32_t newEmptyWeightGramms, u_int32_t newFullWeightGramms) {
+bool SCALEMANAGER::setBottleWeight(uint32_t newEmptyWeightGramms, uint32_t newFullWeightGramms) {
   emptyWeightGramms = newEmptyWeightGramms;
   fullWeightGramms = newFullWeightGramms;
   bool ret = writeToNVS();
@@ -142,5 +148,5 @@ bool SCALEMANAGER::setBottleWeight(u_int32_t newEmptyWeightGramms, u_int32_t new
   return false;
 }
 
-int SCALEMANAGER::getBottleEmptyWeight() { return (int)emptyWeightGramms; }
-int SCALEMANAGER::getBottleFullWeight() { return (int)fullWeightGramms; }
+uint32_t SCALEMANAGER::getBottleEmptyWeight() { return (uint32_t)emptyWeightGramms; }
+uint32_t SCALEMANAGER::getBottleFullWeight() { return (uint32_t)fullWeightGramms; }

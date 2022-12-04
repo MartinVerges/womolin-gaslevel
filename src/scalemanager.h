@@ -21,14 +21,14 @@
 class SCALEMANAGER
 {
 	private:
-        String NVS = "gaslevel";                  // NVS Storage to write and read values
+        String NVS = "gaslevel";                        // NVS Storage to write and read values
 
-        int lastMedian = 0;                        // last reading median value
-        float scale = 1.f;                         // hx711 scale calibration
-        long tare = 0;                             // hx711 tare value
+        uint32_t lastMedian = 0;                        // last reading median value
+        double scale = 1.f;                             // hx711 scale calibration
+        uint64_t tare = 0;                              // hx711 tare value
 
-        u_int32_t emptyWeightGramms = 0;                 // Weight in Gramms of the Empty bottle
-        u_int32_t fullWeightGramms = 0;                  // Weight in Gramms of the Filled bottle
+        uint32_t emptyWeightGramms = 0;                 // Weight in Gramms of the Empty bottle
+        uint32_t fullWeightGramms = 0;                  // Weight in Gramms of the Filled bottle
 
         HX711 hx711;
         Preferences preferences;
@@ -43,7 +43,7 @@ class SCALEMANAGER
         bool writeToNVS();
 
         // Read Median(10) raw value from sensor
-        int getSensorMedianValue(bool cached = false);
+        uint32_t getSensorMedianValue(bool cached = false);
 
         // Set the level variable to 0-100 according to the current state of lastMedian
         // You need to call getSensorMedianValue() before calculateLevel() to update lastMedian
@@ -57,13 +57,14 @@ class SCALEMANAGER
 
 	public:
 		SCALEMANAGER(uint8_t dout, uint8_t pd_sck);
+        SCALEMANAGER(uint8_t dout, uint8_t pd_sck, uint8_t gain);
 		virtual ~SCALEMANAGER();
 
         // Get the current Gas weight inside the bottle calculcated and updated in loop()
         uint32_t getGasWeight() { return currentGasWeightGramms; }
 
         // Get the last Median reading value updated in loop()
-        int getLastMedian() { return lastMedian; }
+        uint32_t getLastMedian() { return lastMedian; }
 
         // Get the current level calculcated and updated in loop()
         uint8_t getLevel() { return level; }
@@ -78,14 +79,14 @@ class SCALEMANAGER
 
         // Calibration of the HX711 weight scale
         void emptyScale();
-        bool applyCalibrateWeight(int weight);
+        bool applyCalibrateWeight(uint32_t weight);
 
         // Set the bottle weight
-        bool setBottleWeight(u_int32_t newEmptyWeightGramms, u_int32_t newFullWeightGramms);
+        bool setBottleWeight(uint32_t newEmptyWeightGramms, uint32_t newFullWeightGramms);
         
         // Get the current bottle weights
-        int getBottleEmptyWeight();
-        int getBottleFullWeight();
+        uint32_t getBottleEmptyWeight();
+        uint32_t getBottleFullWeight();
 
         // helper to get ESP32 runtime
         uint64_t runtime();
