@@ -40,7 +40,7 @@ void APIRegisterRoutes() {
   webServer.on("/api/firmware/info", HTTP_GET, [&](AsyncWebServerRequest *request) {
     auto data = esp_ota_get_running_partition();
     String output;
-    StaticJsonDocument<16> doc;
+    DynamicJsonDocument doc(128);
     doc["partition_type"] = data->type;
     doc["partition_subtype"] = data->subtype;
     doc["address"] = data->address;
@@ -91,7 +91,7 @@ void APIRegisterRoutes() {
     if (final) {
       if (!Update.end(true)) {
         String output;
-        StaticJsonDocument<16> doc;
+        DynamicJsonDocument doc(128);
         doc["message"] = "Update error";
         doc["error"] = Update.errorString();
         serializeJson(doc, output);
@@ -195,7 +195,7 @@ void APIRegisterRoutes() {
   webServer.on("/api/config", HTTP_GET, [&](AsyncWebServerRequest *request) {
     if (request->contentType() == "application/json") {
       String output;
-      StaticJsonDocument<1024> doc;
+      DynamicJsonDocument doc(1024);
 
       if (preferences.begin(NVS_NAMESPACE, true)) {
         doc["hostname"] = hostName;
@@ -241,10 +241,10 @@ void APIRegisterRoutes() {
     if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "application/json", "{\"message\":\"Bad request, value outside available scales\"}");
 
     // Calibration - reference weight
-    DynamicJsonDocument jsonBuffer(64);
+    DynamicJsonDocument jsonBuffer(128);
     deserializeJson(jsonBuffer, (const char*)data);
     if (!jsonBuffer["weight"].is<int>()) return request->send(422, "application/json", "{\"message\":\"Invalid data\"}");
-    LevelManagers[scale-1]->applyCalibrateWeight(jsonBuffer["weight"]);
+    LevelManagers[scale-1]->applyCalibrateWeight(jsonBuffer["weight"].as<int>());
     request->send(200, "application/json", "{\"message\":\"Setup completed\"}");
   });
 
@@ -282,7 +282,7 @@ void APIRegisterRoutes() {
     if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "application/json", "{\"message\":\"Bad request, value outside available scales\"}");
 
     String output;
-    StaticJsonDocument<256> doc;
+    DynamicJsonDocument doc(256);
 
     doc["emptyWeightGramms"] = LevelManagers[scale-1]->getBottleEmptyWeight();
     doc["fullWeightGramms"] = LevelManagers[scale-1]->getBottleFullWeight();
@@ -293,7 +293,7 @@ void APIRegisterRoutes() {
 
   webServer.on("/api/level/current/all", HTTP_GET, [&](AsyncWebServerRequest *request) {
     String output;
-    StaticJsonDocument<1024> jsonDoc;
+    DynamicJsonDocument jsonDoc(1024);
 
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
         jsonDoc[i]["id"] = i;

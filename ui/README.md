@@ -1,4 +1,4 @@
-# UI for the ESP32 based Tank Sensor 
+# UI for the ESP32 based Tank Sensor
 
 This new UI is build with svelte, just because I wanted to learn it! ;)
 
