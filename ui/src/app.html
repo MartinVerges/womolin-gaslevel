@@ -5,7 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		%sveltekit.head%
 	</head>
-	<body class="d-flex flex-column h-100">
-		%sveltekit.body%
+	<body data-sveltekit-preload-data="hover" class="d-flex flex-column h-100">
+		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

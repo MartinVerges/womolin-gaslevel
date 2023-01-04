@@ -189,7 +189,7 @@ void APIRegisterRoutes() {
     }
     preferences.end();
 
-    request->send(200, "application/json", "{\"message\":\"New hostname stored in NVS, reboot required!\"}");
+    request->send(200, "application/json", "{\"message\":\"New configuration stored in NVS, reboot required!\"}");
   });
 
   webServer.on("/api/config", HTTP_GET, [&](AsyncWebServerRequest *request) {
@@ -424,9 +424,14 @@ void APIRegisterRoutes() {
     if (request->method() == HTTP_OPTIONS) {
       request->send(200);
     } else {
+      AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html");
+      response->setCode(200);
+      request->send(response);
+      /*    
       if (request->contentType() == "application/json") {
         request->send(404, "application/json", "{\"message\":\"Not found\"}");
       } else request->send(404, "text/plain", "Not found");
+      */
     }
   });
 }
