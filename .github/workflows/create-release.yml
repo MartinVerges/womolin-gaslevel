@@ -81,7 +81,7 @@ jobs:
         echo "signature_v2 = False" >> ~/.s3cfg
         sudo apt -y update
         sudo apt -y install s3cmd
-        s3cmd put ${{ github.workspace }}/current-version.json s3://webinstaller/gaslevel-latest/
+        s3cmd put ${{ github.workspace }}/current-version.json s3://webinstaller/gaslevel-release/
         s3cmd put ${{ github.workspace }}/.pio/build/wemos_d1_mini32/firmware.bin s3://webinstaller/gaslevel-release/
         s3cmd put ${{ github.workspace }}/.pio/build/wemos_d1_mini32/littlefs.bin s3://webinstaller/gaslevel-release/
         s3cmd put ${{ github.workspace }}/.pio/build/wemos_d1_mini32/partitions.bin s3://webinstaller/gaslevel-release/
