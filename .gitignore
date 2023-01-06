@@ -9,3 +9,4 @@ temp/*
 tools/mklittlefs*
 tools/tmp/
 
+current-version.json
