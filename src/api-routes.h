@@ -40,15 +40,17 @@ void APIRegisterRoutes() {
   webServer.on("/api/firmware/info", HTTP_GET, [&](AsyncWebServerRequest *request) {
     auto data = esp_ota_get_running_partition();
     String output;
-    DynamicJsonDocument doc(128);
+    DynamicJsonDocument doc(256);
     doc["partition_type"] = data->type;
     doc["partition_subtype"] = data->subtype;
     doc["address"] = data->address;
     doc["size"] = data->size;
     doc["label"] = data->label;
     doc["encrypted"] = data->encrypted;
+    doc["firmware_version"] = AUTO_FW_VERSION;
+    doc["firmware_date"] = AUTO_FW_DATE;
     serializeJson(doc, output);
-    request->send(500, "application/json", output);
+    request->send(200, "application/json", output);
   });
 
   webServer.on("/api/update/upload", HTTP_POST,
