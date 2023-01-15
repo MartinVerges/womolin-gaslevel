@@ -303,6 +303,11 @@ void loop() {
       jsonNestedObject["temperature"] = temperature;
       jsonNestedObject["sensorValue"] = LevelManagers[i]->getLastMedian();
 
+      if (enableMqtt && Mqtt.isReady()) {
+        Mqtt.client.publish((Mqtt.mqttTopic + "/airPressure").c_str(), String(event.pressure).c_str(), true);
+        Mqtt.client.publish((Mqtt.mqttTopic + "/temperature").c_str(), String(temperature).c_str(), true);
+      }
+
       if (LevelManagers[i]->isConfigured()) {
         jsonNestedObject["level"] = LevelManagers[i]->getLevel();
         jsonNestedObject["gasWeight"] = LevelManagers[i]->getGasWeight();
@@ -312,18 +317,20 @@ void loop() {
         if (enableBle) updateBleCharacteristic(LevelManagers[i]->getLevel());  // FIXME: need to manage multiple levels
         if (enableMqtt && Mqtt.isReady()) {
           Mqtt.client.publish((Mqtt.mqttTopic + "/level" + String(i+1)).c_str(), String(LevelManagers[i]->getLevel()).c_str(), true);
-          Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), String(LevelManagers[i]->getLastMedian()).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), uint64ToString(LevelManagers[i]->getLastMedian()).c_str(), true);
           Mqtt.client.publish((Mqtt.mqttTopic + "/gasWeight" + String(i+1)).c_str(), String(LevelManagers[i]->getGasWeight()).c_str(), true);
-          Mqtt.client.publish((Mqtt.mqttTopic + "/airPressure" + String(i+1)).c_str(), String(event.pressure).c_str(), true);
-          Mqtt.client.publish((Mqtt.mqttTopic + "/temperature" + String(i+1)).c_str(), String(temperature).c_str(), true);
         }
-
         LOG_INFO_F("[SENSOR] Current level of %d. sensor is %d (raw %d)\n",
           i+1, LevelManagers[i]->getLevel(), LevelManagers[i]->getLastMedian()
         );
       } else {
         if (enableDac) dacValue(i+1, 0);
         if (enableBle) updateBleCharacteristic(0);  // FIXME
+        if (enableMqtt && Mqtt.isReady()) {
+          Mqtt.client.publish((Mqtt.mqttTopic + "/level" + String(i+1)).c_str(), "0", true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), uint64ToString(LevelManagers[i]->getLastMedian()).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/gasWeight" + String(i+1)).c_str(), "0", true);
+        }
         LOG_INFO_F("[SENSOR] Sensor %d not configured, please run the setup! (Raw sensor value %d)\n",
           i+1, (int)LevelManagers[i]->getLastMedian()
         );

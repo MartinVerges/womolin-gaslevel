@@ -64,7 +64,7 @@ class SCALEMANAGER
         uint32_t getGasWeight() { return currentGasWeightGramms; }
 
         // Get the last Median reading value updated in loop()
-        uint32_t getLastMedian() { return lastMedian; }
+        uint64_t getLastMedian() { return lastMedian; }
 
         // Get the current level calculcated and updated in loop()
         uint8_t getLevel() { return level; }

@@ -25,16 +25,6 @@ extern "C" {
   #endif
 }
 
-// Store some history in the RTC RAM that survives deep sleep
-#define MAX_RTC_HISTORY 100                        // store some data points to provide short term history
-typedef struct {
-    uint32_t currentLevel;
-    uint32_t sensorValue;
-    uint64_t timestamp;
-} sensorReadings;
-RTC_DATA_ATTR sensorReadings readingHistory[MAX_RTC_HISTORY];
-RTC_DATA_ATTR uint32_t readingHistoryCount = 0;
-
 SCALEMANAGER::SCALEMANAGER(uint8_t dout, uint8_t pd_sck) {  
   hx711.begin(dout, pd_sck, 64);
   hx711.set_gain(128);

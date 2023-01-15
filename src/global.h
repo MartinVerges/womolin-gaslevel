@@ -70,3 +70,20 @@ MQTTclient Mqtt;
 uint64_t runtime() {
   return rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get()) / 1000;
 }
+
+String uint64ToString(uint64_t input) {
+  String result = "";
+  uint8_t base = 10;
+
+  do {
+    char c = input % base;
+    input /= base;
+
+    if (c < 10)
+      c +='0';
+    else
+      c += 'A' - 10;
+    result = c + result;
+  } while (input);
+  return result;
+}
