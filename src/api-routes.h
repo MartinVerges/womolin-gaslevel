@@ -20,8 +20,6 @@
 #include <Update.h>
 #include <esp_ota_ops.h>
 
-extern bool otaRunning;
-
 extern bool enableWifi;
 extern bool enableBle;
 extern bool enableMqtt;
@@ -51,68 +49,6 @@ void APIRegisterRoutes() {
     doc["firmware_date"] = AUTO_FW_DATE;
     serializeJson(doc, output);
     request->send(200, "application/json", output);
-  });
-
-  webServer.on("/api/update/upload", HTTP_POST,
-    [&](AsyncWebServerRequest *request) { },
-    [&](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
-
-    String otaPassword = "";
-    if (preferences.begin(NVS_NAMESPACE, true)) {
-      otaPassword = preferences.getString("otaPassword");
-      preferences.end();
-
-      if (otaPassword.length()) {
-        if(!request->authenticate("ota", otaPassword.c_str())) {
-          return request->send(401, "application/json", "{\"message\":\"Invalid OTA password provided!\"}");
-        }
-      } else LOG_INFO_LN(F("[OTA] No password configured, no authentication requested!"));
-    } else LOG_INFO_LN(F("[OTA] Unable to load password from NVS."));
-
-    if (!index) {
-      otaRunning = true;
-      LOG_INFO(F("[OTA] Begin firmware update with filename: "));
-      LOG_INFO_LN(filename);
-      // if filename includes spiffs|littlefs, update the spiffs|littlefs partition
-      int cmd = (filename.indexOf("spiffs") > -1 || filename.indexOf("littlefs") > -1) ? U_SPIFFS : U_FLASH;
-      if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
-        LOG_INFO(F("[OTA] Error: "));
-        Update.printError(Serial);
-        request->send(500, "application/json", "{\"message\":\"Unable to begin firmware update!\"}");
-        otaRunning = false;
-      }
-    }
-
-    if (Update.write(data, len) != len) {
-      LOG_INFO(F("[OTA] Error: "));
-      Update.printError(Serial);
-      request->send(500, "application/json", "{\"message\":\"Unable to write firmware update data!\"}");
-      otaRunning = false;
-    }
-
-    if (final) {
-      if (!Update.end(true)) {
-        String output;
-        DynamicJsonDocument doc(128);
-        doc["message"] = "Update error";
-        doc["error"] = Update.errorString();
-        serializeJson(doc, output);
-        request->send(500, "application/json", output);
-
-        LOG_INFO_LN("[OTA] Error when calling calling Update.end().");
-        Update.printError(Serial);
-        otaRunning = false;
-      } else {
-        LOG_INFO_LN("[OTA] Firmware update successful.");
-        request->send(200, "application/json", "{\"message\":\"Please wait while the device reboots!\"}");
-        yield();
-        delay(250);
-
-        LOG_INFO_LN("[OTA] Update complete, rebooting now!");
-        Serial.flush();
-        ESP.restart();
-      }
-    }
   });
 
   events.onConnect([&](AsyncEventSourceClient *client){
@@ -145,45 +81,48 @@ void APIRegisterRoutes() {
         request->send(422, "application/json", "{\"message\":\"Invalid hostname!\"}");
         return;
       } else {
-        preferences.putString("hostName", hostname);
+        preferences.putString("hostname", hostname);
       }
 
-      if (preferences.putBool("enableWifi", jsonBuffer["enablewifi"].as<boolean>())) {
-        enableWifi = jsonBuffer["enablewifi"].as<boolean>();
+      if (preferences.putBool("enableWifi", jsonBuffer["enableWifi"].as<boolean>())) {
+        enableWifi = jsonBuffer["enableWifi"].as<boolean>();
       }
-      if (preferences.putBool("enableSoftAp", jsonBuffer["enablesoftap"].as<boolean>())) {
-        WifiManager.fallbackToSoftAp(jsonBuffer["enablesoftap"].as<boolean>());
+      if (preferences.putBool("enableSoftAp", jsonBuffer["enableSoftAp"].as<boolean>())) {
+        WifiManager.fallbackToSoftAp(jsonBuffer["enableSoftAp"].as<boolean>());
       }
 
-      if (preferences.putBool("enableBle", jsonBuffer["enableble"].as<boolean>())) {
+      if (preferences.putBool("enableBle", jsonBuffer["enableBle"].as<boolean>())) {
         if (enableBle) stopBleServer();
-        enableBle = jsonBuffer["enableble"].as<boolean>();
-        if (enableBle) createBleServer(hostName);
+        enableBle = jsonBuffer["enableBle"].as<boolean>();
+        if (enableBle) createBleServer(hostname);
         yield();
       }
-      if (preferences.putBool("enableDac", jsonBuffer["enabledac"].as<boolean>())) {
-        enableDac = jsonBuffer["enabledac"].as<boolean>();
+      if (preferences.putBool("enableDac", jsonBuffer["enableDac"].as<boolean>())) {
+        enableDac = jsonBuffer["enableDac"].as<boolean>();
       }
 
-      preferences.putString("otaPassword", jsonBuffer["otapassword"].as<String>());
-      ArduinoOTA.setPassword(jsonBuffer["otapassword"].as<String>().c_str());
+      preferences.putString("otaPassword", jsonBuffer["otaPassword"].as<String>());
+      preferences.putBool("otaWebEnabled", jsonBuffer["otaWebEnabled"].as<boolean>());
+      if (preferences.putString("otaWebUrl", jsonBuffer["otaWebUrl"].as<String>())) {
+        otaWebUpdater.setBaseUrl(jsonBuffer["otaWebUrl"].as<String>());
+      }  
 
       // MQTT Settings
-      preferences.putUInt("mqttPort", jsonBuffer["mqttport"].as<uint16_t>());
-      preferences.putString("mqttHost", jsonBuffer["mqtthost"].as<String>());
-      preferences.putString("mqttTopic", jsonBuffer["mqtttopic"].as<String>());
-      preferences.putString("mqttUser", jsonBuffer["mqttuser"].as<String>());
-      preferences.putString("mqttPass", jsonBuffer["mqttpass"].as<String>());
-      if (preferences.putBool("enableMqtt", jsonBuffer["enablemqtt"].as<boolean>())) {
+      preferences.putUInt("mqttPort", jsonBuffer["mqttPort"].as<uint16_t>());
+      preferences.putString("mqttHost", jsonBuffer["mqttHost"].as<String>());
+      preferences.putString("mqttTopic", jsonBuffer["mqttTopic"].as<String>());
+      preferences.putString("mqttUser", jsonBuffer["mqttUser"].as<String>());
+      preferences.putString("mqttPass", jsonBuffer["mqttPass"].as<String>());
+      if (preferences.putBool("enableMqtt", jsonBuffer["enableMqtt"].as<boolean>())) {
         if (enableMqtt) Mqtt.disconnect();
-        enableMqtt = jsonBuffer["enablemqtt"].as<boolean>();
+        enableMqtt = jsonBuffer["enableMqtt"].as<boolean>();
         if (enableMqtt) {
           Mqtt.prepare(
-            jsonBuffer["mqtthost"].as<String>(),
-            jsonBuffer["mqttport"].as<uint16_t>(),
-            jsonBuffer["mqtttopic"].as<String>(),
-            jsonBuffer["mqttuser"].as<String>(),
-            jsonBuffer["mqttpass"].as<String>()
+            jsonBuffer["mqttHost"].as<String>(),
+            jsonBuffer["mqttPort"].as<uint16_t>(),
+            jsonBuffer["mqttTopic"].as<String>(),
+            jsonBuffer["mqttUser"].as<String>(),
+            jsonBuffer["mqttPass"].as<String>()
           );
           Mqtt.connect();
         }
@@ -200,21 +139,21 @@ void APIRegisterRoutes() {
       DynamicJsonDocument doc(1024);
 
       if (preferences.begin(NVS_NAMESPACE, true)) {
-        doc["hostname"] = hostName;
-        doc["enablewifi"] = enableWifi;
-        doc["enablesoftap"] = WifiManager.getFallbackState();
-        doc["enableble"] = enableBle;
-        doc["enabledac"] = enableDac;
+        doc["hostname"] = hostname;
+        doc["enableWifi"] = enableWifi;
+        doc["enableSoftAp"] = WifiManager.getFallbackState();
+        doc["enableBle"] = enableBle;
+        doc["enableDac"] = enableDac;
 
-        doc["otapassword"] = preferences.getString("otaPassword");
+        doc["otaPassword"] = preferences.getString("otaPassword");
 
         // MQTT
-        doc["enablemqtt"] = enableMqtt;
-        doc["mqttport"] = preferences.getUInt("mqttPort", 1883);
-        doc["mqtthost"] = preferences.getString("mqttHost", "");
-        doc["mqtttopic"] = preferences.getString("mqttTopic", "");
-        doc["mqttuser"] = preferences.getString("mqttUser", "");
-        doc["mqttpass"] = preferences.getString("mqttPass", "");
+        doc["enableMqtt"] = enableMqtt;
+        doc["mqttPort"] = preferences.getUInt("mqttPort", 1883);
+        doc["mqttHost"] = preferences.getString("mqttHost", "");
+        doc["mqttTopic"] = preferences.getString("mqttTopic", "");
+        doc["mqttUser"] = preferences.getString("mqttUser", "");
+        doc["mqttPass"] = preferences.getString("mqttPass", "");
       }
       preferences.end();
 

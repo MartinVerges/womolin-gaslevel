@@ -7,7 +7,7 @@
 	// ******* SHOW STATUS ******** //
 	let sensorValue = undefined;
 	onMount(async () => {
-		if (!!window.EventSource) {
+		if (window.EventSource) {
 			var source = new EventSource('/api/events');
 
 			source.addEventListener(

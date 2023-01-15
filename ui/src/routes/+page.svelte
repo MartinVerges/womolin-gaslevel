@@ -1,6 +1,8 @@
 <script>
 	import { Progress } from 'sveltestrap';
 	import { onMount } from 'svelte';
+	import { toast } from '@zerodevx/svelte-toast';
+	import { variables } from '$lib/utils/variables';
 
 	// ******* SHOW LEVEL ******** //
 	let level = undefined;
@@ -19,7 +21,7 @@
 
 	onMount(async () => {
 		// dynamic refreshing level
-		if (!!window.EventSource) {
+		if (window.EventSource) {
 			var source = new EventSource('/api/events');
 
 			source.addEventListener(

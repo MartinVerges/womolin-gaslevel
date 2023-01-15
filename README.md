@@ -88,8 +88,8 @@ Here is a example command to upload existing firmware files.
     0x8000 partitions.bin \
     0xe000 boot_app0.bin \
     0x10000 firmware.bin \
-    0x190000 firmware.bin \
-    0x310000 littlefs.bin
+    0x1A0000 firmware.bin \
+    0x330000 littlefs.bin
 ```
 Please make sure that your ESP32 runs with these settings before uploading it.
 

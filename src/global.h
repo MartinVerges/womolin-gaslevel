@@ -20,6 +20,7 @@
 #include <LittleFS.h>
 #include "MQTTclient.h"
 #include "wifimanager.h"
+#include "otaWebUpdater.h"
 
 #define webserverPort 80                    // Start the Webserver on this port
 #define NVS_NAMESPACE "gaslevel"            // Preferences.h namespace to store settings
@@ -27,7 +28,8 @@
 #include <SPI.h>
 #include <Wire.h>
 
-bool otaRunning = false;
+OtaWebUpdater otaWebUpdater;
+bool enableOtaWebUpdate = true;             // Do automatic updates from web
 
 RTC_DATA_ATTR struct timing_t {
   // Check Services like MQTT, ...
@@ -58,7 +60,7 @@ struct Button {
 };
 Button button1 = {GPIO_NUM_4, false};       // Run the setup (use a RTC GPIO)
 
-String hostName;
+String hostname;
 uint32_t blePin;
 DNSServer dnsServer;
 AsyncWebServer webServer(webserverPort);

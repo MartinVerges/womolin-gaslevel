@@ -68,6 +68,8 @@ build-firmware:
       - results/partitions.bin
       - results/boot_app0.bin
       - results/bootloader_dio_80m.bin
+      - results/esp32-dio-80m-4MB.bin
+
   script:
     - pio run -e $PIO_ENV
     - pio run -e $PIO_ENV -t buildfs
@@ -77,6 +79,15 @@ build-firmware:
     - cp .pio/build/$PIO_ENV/partitions.bin results/
     - cp /root/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin results/
     - cp /root/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_80m.bin results/
+    - python3 ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32
+      merge_bin -o results/esp32-dio-80m-4MB.bin
+      --flash_mode dio
+      --flash_freq 80m
+      --flash_size 4MB
+      0x008000 results/partitions.bin
+      0x010000 results/firmware.bin
+      0x1A0000 results/firmware.bin
+      0x330000 results/littlefs.bin
 
 upload:
   stage: upload
