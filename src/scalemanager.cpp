@@ -13,6 +13,7 @@
 #include "log.h"
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <HX711.h>
 #include <Preferences.h>
 #include "scalemanager.h"
@@ -68,6 +69,52 @@ bool SCALEMANAGER::writeToNVS() {
   }
 }
 
+String SCALEMANAGER::getJsonConfig() {
+    String output;
+    DynamicJsonDocument doc(256);
+
+    doc["scale"] = hx711.get_scale();
+    doc["tare"] = hx711.get_offset();
+    doc["emptyWeight"] = emptyWeightGramms;
+    doc["fullWeight"] = fullWeightGramms;
+
+    serializeJsonPretty(doc, output);
+    return output;
+}
+
+// Write the config running environment and to NVS
+bool SCALEMANAGER::putJsonConfig(String newCfg) {
+    DynamicJsonDocument jsonBuffer(1024);
+    DeserializationError error = deserializeJson(jsonBuffer, newCfg);
+
+    if (error) {
+      LOG_INFO("deserializeJson() failed: ");
+      LOG_INFO_LN(error.f_str());
+      return false;
+    }
+
+    if (jsonBuffer["scale"].isNull()
+     || jsonBuffer["tare"].isNull()
+     || jsonBuffer["emptyWeight"].isNull()
+     || jsonBuffer["fullWeight"].isNull()) {
+      LOG_INFO_LN("At least one field is missing. Check the scale, tare, emptyWeight, fullWeight field!");
+      return false;
+    }
+
+    scale = jsonBuffer["scale"].as<double>();
+    hx711.set_scale(scale);
+    tare = jsonBuffer["tare"].as<uint64_t>();
+    hx711.set_offset(tare);
+    LOG_INFO_F("[SCALE] Successfully set data. Scale = %f with offset %ld\n", scale, tare);
+
+    emptyWeightGramms = jsonBuffer["emptyWeight"].as<uint32_t>();
+    fullWeightGramms = jsonBuffer["fullWeight"].as<uint32_t>();
+    LOG_INFO_F("[SCALE] Bottle configuration: Empty = %dg Full = %dg\n", emptyWeightGramms, fullWeightGramms);
+
+    return writeToNVS();
+}
+
+
 bool SCALEMANAGER::isConfigured() {
   //return true;
   return scale != 1.f && tare != 0;
@@ -79,7 +126,7 @@ void SCALEMANAGER::begin(String nvs) {
     LOG_INFO_LN(F("[SCALE] Error opening NVS Namespace, giving up..."));
   } else {
     scale = preferences.getDouble("scale", 1.f);
-    tare = preferences.getLong64("tare", 0);
+    tare = preferences.getULong64("tare", 0);
     LOG_INFO_F("[SCALE] Successfully recovered data. Scale = %f with offset %ld\n", scale, tare);
     emptyWeightGramms = preferences.getUInt("emptyWeight", 5500); // 11Kg alu bottle by default is 5Kg empty
     fullWeightGramms = preferences.getUInt("fullWeight", 16500);  // 11Kg alu bottle by default
@@ -105,7 +152,7 @@ uint32_t SCALEMANAGER::getSensorMedianValue(bool cached) {
 uint8_t SCALEMANAGER::calculateLevel() {
   currentGasWeightGramms = (lastMedian > emptyWeightGramms) ? lastMedian - emptyWeightGramms : 0;
   uint32_t maxGasWeight = fullWeightGramms - emptyWeightGramms;
-  uint32_t pct = (int)((float)currentGasWeightGramms / (float)maxGasWeight * 100.f);
+  uint32_t pct = (uint32_t)((float)currentGasWeightGramms / (float)maxGasWeight * 100.f);
   // LOG_INFO_F("DEBUG - %d | %d | %d | %d | %d | %d \n", lastMedian, pct, currentGasWeight, maxGasWeight, fullWeightGramms, emptyWeightGramms);
   if (pct < 0) pct = 0;
   if (pct > 100) pct = 100;

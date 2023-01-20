@@ -268,7 +268,6 @@ void loop() {
     Timing.lastStatusUpdate = runtime();
 
     String jsonOutput;
-    //StaticJsonDocument<1024> jsonDoc;
     DynamicJsonDocument jsonDoc(1024);
     JsonArray jsonArray = jsonDoc.to<JsonArray>();
 
@@ -296,7 +295,6 @@ void loop() {
         jsonNestedObject["level"] = LevelManagers[i]->getLevel();
         jsonNestedObject["gasWeight"] = LevelManagers[i]->getGasWeight();
 
-        String ident = String("level") + String(i);
         if (enableDac) dacValue(i+1, LevelManagers[i]->getLevel());
         if (enableBle) updateBleCharacteristic(LevelManagers[i]->getLevel());  // FIXME: need to manage multiple levels
         if (enableMqtt && Mqtt.isReady()) {

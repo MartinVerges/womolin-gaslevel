@@ -162,6 +162,28 @@ void APIRegisterRoutes() {
     } else request->send(415, "text/plain", "Unsupported Media Type");
   });
 
+  webServer.on("/api/scale/config", HTTP_GET, [&](AsyncWebServerRequest *request) {
+    if (!request->hasParam("scale")) return request->send(400, "application/json", "{\"message\":\"Missing parameter scale\"}");
+    uint8_t scale = request->getParam("scale")->value().toInt();
+    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "application/json", "{\"message\":\"Bad request, value outside available scales\"}");
+
+    if (request->contentType() == "application/json") {
+      request->send(200, "application/json", LevelManagers[scale-1]->getJsonConfig());
+    } else request->send(415, "text/plain", "Unsupported Media Type");
+  });
+
+  webServer.on("/api/scale/config", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
+    [&](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
+
+    if (!request->hasParam("scale")) return request->send(400, "application/json", "{\"message\":\"Missing parameter scale\"}");
+    uint8_t scale = request->getParam("scale")->value().toInt();
+    if (scale > LEVELMANAGERS or scale < 1) return request->send(400, "application/json", "{\"message\":\"Bad request, value outside available scales\"}");
+
+    bool success = LevelManagers[scale-1]->putJsonConfig(String((const char*)data));
+    if (success) request->send(200, "application/json", "{\"message\":\"Loaded new scale config!\"}");
+    else return request->send(422, "application/json", "{\"message\":\"Invalid data or unable to write to NVS\"}");
+  });
+
   webServer.on("/api/calibrate/empty", HTTP_POST, [&](AsyncWebServerRequest * request){}, NULL,
     [&](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
       

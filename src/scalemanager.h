@@ -77,6 +77,12 @@ class SCALEMANAGER
 
         bool isConfigured();
 
+        // Receive the current configuration
+        String getJsonConfig();
+
+        // Write the config running environment and to NVS
+        bool putJsonConfig(String newCfg);
+
         // Calibration of the HX711 weight scale
         void emptyScale();
         bool applyCalibrateWeight(uint32_t weight);
