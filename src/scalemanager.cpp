@@ -150,6 +150,10 @@ uint32_t SCALEMANAGER::getSensorMedianValue(bool cached) {
 }
 
 uint8_t SCALEMANAGER::calculateLevel() {
+  if (isConfigured() && lastMedian > fullWeightGramms*4) {
+    LOG_INFO_LN(F("[SCALE] Very high reading from hx711, possibly incorrect. Set to 0 to prevent underflow issues"));
+    lastMedian = 0;
+  }
   currentGasWeightGramms = (lastMedian > emptyWeightGramms) ? lastMedian - emptyWeightGramms : 0;
   uint32_t maxGasWeight = fullWeightGramms - emptyWeightGramms;
   uint32_t pct = (uint32_t)((float)currentGasWeightGramms / (float)maxGasWeight * 100.f);
