@@ -51,6 +51,9 @@ extern "C" {
   #endif
 }
 
+#define BMP_SDA 21
+#define BMP_SCL 22
+
 #include "global.h"
 #include "api-routes.h"
 #include "ble.h"
@@ -59,7 +62,14 @@ extern "C" {
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP085_U.h>
 Adafruit_BMP085_Unified bmp180 = Adafruit_BMP085_Unified(10085);
+
 bool bmp180_found = false;
+
+#include <Adafruit_BMP280.h>
+bool bmp280_found = false;
+Adafruit_BMP280 bmp280; // use I2C interface
+Adafruit_Sensor *bmp280_temp = bmp280.getTemperatureSensor();
+Adafruit_Sensor *bmp280_pressure = bmp280.getPressureSensor();
 
 WebSerialClass WebSerial;
 
@@ -179,7 +189,21 @@ void setup() {
   LOG_INFO_LN(F("[LITTLEFS] initialized"));
 
   bmp180_found = bmp180.begin(BMP085_MODE_ULTRAHIGHRES);
-  if (!bmp180_found) LOG_INFO_LN(F("[BMP180] Chip not found, disabling temperature and pressure"));
+  if (!bmp180_found) {
+    LOG_INFO_LN(F("[BMP180] Chip not found, trying BMP280 next"));
+    bmp280_found = bmp280.begin(BMP280_ADDRESS_ALT);
+    if (bmp280_found) {
+      /* Default settings from datasheet. */
+      bmp280.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
+                          Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                          Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                          Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                          Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+      bmp280_temp->printSensorDetails();
+    } else {
+     LOG_INFO_LN(F("[BMP280] Chip not found, disabling temperature and pressure"));
+    }
+  }
 
   for (uint8_t i=0; i < LEVELMANAGERS; i++) {
     LevelManagers[i]->begin(String(NVS_NAMESPACE) + String("s") + String(i));
@@ -271,23 +295,31 @@ void loop() {
     DynamicJsonDocument jsonDoc(1024);
     JsonArray jsonArray = jsonDoc.to<JsonArray>();
 
-    sensors_event_t event;
+    float pressure = 0.f;
     float temperature = 0.f;
     if (bmp180_found) {
+      sensors_event_t event;
       bmp180.getEvent(&event);
       bmp180.getTemperature(&temperature);
-    } else {
-      event.pressure = 0;
+      pressure = event.pressure;
+
+    } else if (bmp280_found) {
+      sensors_event_t temp_event, pressure_event;
+      bmp280_pressure->getEvent(&pressure_event);
+      bmp280_temp->getEvent(&temp_event);
+      pressure = pressure_event.pressure;
+      temperature = temp_event.temperature;
+      
     }
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
       JsonObject jsonNestedObject = jsonArray.createNestedObject();
       jsonNestedObject["id"] = i;
-      jsonNestedObject["airPressure"] = event.pressure;
+      jsonNestedObject["airPressure"] = pressure;
       jsonNestedObject["temperature"] = temperature;
       jsonNestedObject["sensorValue"] = LevelManagers[i]->getLastMedian();
 
       if (enableMqtt && Mqtt.isReady()) {
-        Mqtt.client.publish((Mqtt.mqttTopic + "/airPressure").c_str(), String(event.pressure).c_str(), true);
+        Mqtt.client.publish((Mqtt.mqttTopic + "/airPressure").c_str(), String(pressure).c_str(), true);
         Mqtt.client.publish((Mqtt.mqttTopic + "/temperature").c_str(), String(temperature).c_str(), true);
       }
 
