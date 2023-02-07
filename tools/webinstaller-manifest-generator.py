@@ -1,12 +1,21 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
-import subprocess
 import argparse
 import json
 import csv
 import os
+import sys
 
-build_version = subprocess.run(["git", "describe", "--tags"], stdout=subprocess.PIPE, text=True).stdout.strip().strip('"')
+manifestFile = os.path.normpath(os.path.dirname(__file__) + '/webinstaller-manifest-template.json')
+if not os.path.isfile(manifestFile):
+    sys.exit("[ERROR] Unable to open %s" % manifestFile)
+
+currentVersionFile = os.path.normpath(os.path.dirname(__file__) + '/../current-version.json')
+if not os.path.isfile(currentVersionFile):
+    sys.exit("[ERROR] Unable to open %s" % currentVersionFile)
+
+with open(currentVersionFile) as versionFile:
+  currentVersion = json.load(versionFile)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', '--project', help="Name of the Project",
@@ -18,8 +27,6 @@ parser.add_argument('-s', '--url', help="Base URL of the file storage",
                     default='https://s3.womolin.de')
 parser.add_argument('-f', '--file', help="Partition layout csv file",
                     action='store', metavar='partitions.csv', required=True)
-parser.add_argument('-v', '--version', help="Version of that build",
-                    action='store', metavar='<version>', default=build_version)
 parser.add_argument('-o', '--outfile', help="Filename of the output manifest file",
                     action='store', metavar='<filename>', default="manifest.json")
                 
@@ -48,7 +55,7 @@ with open(args['file']) as csvfile:
 with open(os.path.dirname(__file__) + '/webinstaller-manifest-template.json') as user_file:
   manifest = json.load(user_file)
   manifest['name'] = args['project']
-  manifest['version'] = args['version']
+  manifest['version'] = currentVersion['revision']
   manifest['builds'][0]['parts'] = data
   # print(json.dumps(manifest, indent=2))
 
