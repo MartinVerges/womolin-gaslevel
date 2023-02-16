@@ -23,6 +23,7 @@ class WebSerialClass {
         void print(uint8_t c);
         void print(uint16_t c);
         void print(uint32_t c);
+        void print(long int c);
         void print(double c);
         void print(float c);
         void print(const char * c);
@@ -33,6 +34,7 @@ class WebSerialClass {
         void println(uint8_t c);
         void println(uint16_t c);
         void println(uint32_t c);
+        void println(long int c);
         void println(float c);
         void println(double c);
         void println(const char * c);

@@ -47,6 +47,10 @@ void WebSerialClass::print(uint32_t c) {
   if (webServer != nullptr) webSocket->textAll(String(c));
 }
 
+void WebSerialClass::print(long int c) {
+  if (webServer != nullptr) webSocket->textAll(String(c));
+}
+
 void WebSerialClass::print(double c) {
   if (webServer != nullptr) webSocket->textAll(String(c));
 }
@@ -80,6 +84,10 @@ void WebSerialClass::println(uint16_t c) {
 }
 
 void WebSerialClass::println(uint32_t c) {
+  if (webServer != nullptr) webSocket->textAll(String(c) + "\n");        
+}
+
+void WebSerialClass::println(long int c) {
   if (webServer != nullptr) webSocket->textAll(String(c) + "\n");        
 }
 
