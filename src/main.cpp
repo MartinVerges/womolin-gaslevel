@@ -71,6 +71,14 @@ Adafruit_BMP280 bmp280; // use I2C interface
 Adafruit_Sensor *bmp280_temp = bmp280.getTemperatureSensor();
 Adafruit_Sensor *bmp280_pressure = bmp280.getPressureSensor();
 
+/*
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+OneWire oneWire(25); // 27 or 23
+DallasTemperature sensors(&oneWire);
+
+*/
 WebSerialClass WebSerial;
 
 void IRAM_ATTR ISR_button1() {
@@ -165,6 +173,10 @@ void initWifiAndServices() {
 }
 
 void setup() {
+/*
+  pinMode(23, OUTPUT);
+  digitalWrite(23, LOW);
+*/
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   LOG_INFO_LN(F("\n\n==== starting ESP32 setup() ===="));
@@ -246,6 +258,17 @@ void setup() {
       enableWifi = true;
     }
   }
+/*
+  digitalWrite(23, LOW);
+  sensors.begin();
+  Serial.print("Sensor count = ");
+  Serial.println(sensors.getDS18Count());
+  sensors.requestTemperatures(); 
+  float temperatureC = sensors.getTempCByIndex(0);
+  Serial.print(temperatureC);
+  Serial.println("ºC");
+  digitalWrite(23, HIGH);
+  */
 }
 
 // Soft reset the ESP to start with setup() again, but without loosing RTC_DATA as it would be with ESP.reset()
@@ -311,8 +334,19 @@ void loop() {
       temperature = temp_event.temperature;
       
     }
+/*
+    digitalWrite(23, LOW);
+    sensors.requestTemperatures(); 
+    float temperatureC = sensors.getTempCByIndex(0);
+    Serial.print(temperatureC);
+    Serial.println("ºC");
+    digitalWrite(23, HIGH);
+    delay(100);
+*/
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
       JsonObject jsonNestedObject = jsonArray.createNestedObject();
+      //LevelManagers[i]->initHX711();
+      //delay(100);
       jsonNestedObject["id"] = i;
       jsonNestedObject["airPressure"] = pressure;
       jsonNestedObject["temperature"] = temperature;
@@ -331,10 +365,10 @@ void loop() {
         if (enableBle) updateBleCharacteristic(LevelManagers[i]->getLevel());  // FIXME: need to manage multiple levels
         if (enableMqtt && Mqtt.isReady()) {
           Mqtt.client.publish((Mqtt.mqttTopic + "/level" + String(i+1)).c_str(), String(LevelManagers[i]->getLevel()).c_str(), true);
-          Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), uint64ToString(LevelManagers[i]->getLastMedian()).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), String(LevelManagers[i]->getLastMedian()).c_str(), true);
           Mqtt.client.publish((Mqtt.mqttTopic + "/gasWeight" + String(i+1)).c_str(), String(LevelManagers[i]->getGasWeight()).c_str(), true);
         }
-        LOG_INFO_F("[SENSOR] Current level of %d. sensor is %d (raw %d)\n",
+        LOG_INFO_F("[SENSOR] %d. sensor level is %d%% (raw sensor value = %d)\n",
           i+1, LevelManagers[i]->getLevel(), LevelManagers[i]->getLastMedian()
         );
       } else {
@@ -342,11 +376,11 @@ void loop() {
         if (enableBle) updateBleCharacteristic(0);  // FIXME
         if (enableMqtt && Mqtt.isReady()) {
           Mqtt.client.publish((Mqtt.mqttTopic + "/level" + String(i+1)).c_str(), "0", true);
-          Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), uint64ToString(LevelManagers[i]->getLastMedian()).c_str(), true);
+          Mqtt.client.publish((Mqtt.mqttTopic + "/sensorValue" + String(i+1)).c_str(), String(LevelManagers[i]->getLastMedian()).c_str(), true);
           Mqtt.client.publish((Mqtt.mqttTopic + "/gasWeight" + String(i+1)).c_str(), "0", true);
         }
-        LOG_INFO_F("[SENSOR] Sensor %d not configured, please run the setup! (Raw sensor value %d)\n",
-          i+1, (int)LevelManagers[i]->getLastMedian()
+        LOG_INFO_F("[SENSOR] %d. Sensor is not configured, please run the setup! (raw sensor value %d)\n",
+          i+1, LevelManagers[i]->getLastMedian()
         );
       }
     }

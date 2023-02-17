@@ -43,8 +43,8 @@ RTC_DATA_ATTR struct timing_t {
 
 RTC_DATA_ATTR uint64_t sleepTime = 0;             // Time that the esp32 slept
 
-SCALEMANAGER LevelManager1(32,27);
-SCALEMANAGER LevelManager2(16,17);
+SCALEMANAGER LevelManager1(32, 27, 128);
+SCALEMANAGER LevelManager2(16, 17, 128);
 #define LEVELMANAGERS 2
 SCALEMANAGER * LevelManagers[LEVELMANAGERS] = {
   &LevelManager1,

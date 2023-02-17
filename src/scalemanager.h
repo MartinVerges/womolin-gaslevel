@@ -23,9 +23,9 @@ class SCALEMANAGER
 	private:
         String NVS = "gaslevel";                        // NVS Storage to write and read values
 
-        uint64_t lastMedian = 0;                        // last reading median value
-        double scale = 1.f;                             // hx711 scale calibration
-        uint64_t tare = 0;                              // hx711 tare value
+        uint32_t lastMedian = 0;                        // last reading median value
+        double SCALE = 1.f;                             // hx711 scale calibration
+        uint32_t OFFSET = 0;                            // hx711 offset (tare) value
 
         uint32_t emptyWeightGramms = 0;                 // Weight in Gramms of the Empty bottle
         uint32_t fullWeightGramms = 0;                  // Weight in Gramms of the Filled bottle
@@ -55,16 +55,27 @@ class SCALEMANAGER
         // The current amount of GAS available in the bottle (without the weight of the bottle)
         uint32_t currentGasWeightGramms;
 
+        // HX711 connection details
+        uint8_t DOUT = 0;
+        uint8_t PD_SCK = 0;
+        uint8_t GAIN = 128;
+
 	public:
 		SCALEMANAGER(uint8_t dout, uint8_t pd_sck);
         SCALEMANAGER(uint8_t dout, uint8_t pd_sck, uint8_t gain);
 		virtual ~SCALEMANAGER();
 
+        // Set GPIOs and Gain
+        void setGPIOs(uint8_t dout, uint8_t pd_sck, uint8_t gain);
+
+        // Init the HX711 sensor        
+        void initHX711();
+
         // Get the current Gas weight inside the bottle calculcated and updated in loop()
         uint32_t getGasWeight() { return currentGasWeightGramms; }
 
         // Get the last Median reading value updated in loop()
-        uint64_t getLastMedian() { return lastMedian; }
+        uint32_t getLastMedian() { return lastMedian; }
 
         // Get the current level calculcated and updated in loop()
         uint8_t getLevel() { return level; }

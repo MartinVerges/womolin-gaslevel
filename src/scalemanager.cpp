@@ -26,15 +26,25 @@ extern "C" {
   #endif
 }
 
-SCALEMANAGER::SCALEMANAGER(uint8_t dout, uint8_t pd_sck) {  
-  hx711.begin(dout, pd_sck, 64);
-  hx711.set_gain(128);
+SCALEMANAGER::SCALEMANAGER(uint8_t dout, uint8_t pd_sck) {
+  setGPIOs(dout, pd_sck, 128);
+  initHX711();
 }
 
-SCALEMANAGER::SCALEMANAGER(uint8_t dout, uint8_t pd_sck, uint8_t gain) {  
-  hx711.begin(dout, pd_sck, 64);
-  if (gain == 128 or gain == 64 or gain == 32) hx711.set_gain(gain);
-  else hx711.set_gain(128);
+SCALEMANAGER::SCALEMANAGER(uint8_t dout, uint8_t pd_sck, uint8_t gain) {
+  setGPIOs(dout, pd_sck, gain);
+  initHX711();
+}
+
+void SCALEMANAGER::setGPIOs(uint8_t dout, uint8_t pd_sck, uint8_t gain) {
+  DOUT = dout;
+  PD_SCK = pd_sck;
+  GAIN = gain;
+  Serial.printf("setGPIOs(dout = %d, pd_sck = %d, gain = %d)\n", DOUT, PD_SCK, GAIN);
+}
+
+void SCALEMANAGER::initHX711() {
+  hx711.begin(DOUT, PD_SCK, GAIN);
 }
 
 SCALEMANAGER::~SCALEMANAGER() {
@@ -56,12 +66,20 @@ void SCALEMANAGER::loop() {
 
 bool SCALEMANAGER::writeToNVS() {
   if (preferences.begin(NVS.c_str(), false)) {
+    SCALE = hx711.get_scale();
+    OFFSET = hx711.get_offset();
     preferences.clear();
     preferences.putDouble("scale", hx711.get_scale());
-    preferences.putULong64("tare", hx711.get_offset());
+    preferences.putULong("offset", hx711.get_offset());
     preferences.putUInt("emptyWeight", emptyWeightGramms);
     preferences.putUInt("fullWeight", fullWeightGramms);
+
+    LOG_INFO_F("[SCALE] Stored scale (%.8f) and offset (%d) in NVS\n",
+      preferences.getDouble("scale"),
+      preferences.getULong("offset")
+    );
     preferences.end();
+
     return true;
   } else {
     LOG_INFO_LN(F("[SCALE] Unable to write data to NVS, giving up..."));
@@ -74,7 +92,7 @@ String SCALEMANAGER::getJsonConfig() {
     DynamicJsonDocument doc(256);
 
     doc["scale"] = hx711.get_scale();
-    doc["tare"] = hx711.get_offset();
+    doc["offset"] = hx711.get_offset();
     doc["emptyWeight"] = emptyWeightGramms;
     doc["fullWeight"] = fullWeightGramms;
 
@@ -94,18 +112,18 @@ bool SCALEMANAGER::putJsonConfig(String newCfg) {
     }
 
     if (jsonBuffer["scale"].isNull()
-     || jsonBuffer["tare"].isNull()
+     || jsonBuffer["offset"].isNull()
      || jsonBuffer["emptyWeight"].isNull()
      || jsonBuffer["fullWeight"].isNull()) {
-      LOG_INFO_LN("At least one field is missing. Check the scale, tare, emptyWeight, fullWeight field!");
+      LOG_INFO_LN("At least one field is missing. Check the scale, offset, emptyWeight, fullWeight field!");
       return false;
     }
 
-    scale = jsonBuffer["scale"].as<double>();
-    hx711.set_scale(scale);
-    tare = jsonBuffer["tare"].as<uint64_t>();
-    hx711.set_offset(tare);
-    LOG_INFO_F("[SCALE] Successfully set data. Scale = %f with offset %ld\n", scale, tare);
+    SCALE = jsonBuffer["scale"].as<double>();
+    hx711.set_scale(SCALE);
+    OFFSET = jsonBuffer["offset"].as<uint32_t>();
+    hx711.set_offset(OFFSET);
+    LOG_INFO_F("[SCALE] Successfully set data. Scale = %.8f with offset %d\n", SCALE, OFFSET);
 
     emptyWeightGramms = jsonBuffer["emptyWeight"].as<uint32_t>();
     fullWeightGramms = jsonBuffer["fullWeight"].as<uint32_t>();
@@ -117,7 +135,7 @@ bool SCALEMANAGER::putJsonConfig(String newCfg) {
 
 bool SCALEMANAGER::isConfigured() {
   //return true;
-  return scale != 1.f && tare != 0;
+  return SCALE != 1.f && OFFSET != 0;
 }
 
 void SCALEMANAGER::begin(String nvs) {
@@ -125,14 +143,14 @@ void SCALEMANAGER::begin(String nvs) {
   if (!preferences.begin(NVS.c_str(), false)) {
     LOG_INFO_LN(F("[SCALE] Error opening NVS Namespace, giving up..."));
   } else {
-    scale = preferences.getDouble("scale", 1.f);
-    tare = preferences.getULong64("tare", 0);
-    LOG_INFO_F("[SCALE] Successfully recovered data. Scale = %f with offset %ld\n", scale, tare);
-    emptyWeightGramms = preferences.getUInt("emptyWeight", 5500); // 11Kg alu bottle by default is 5Kg empty
-    fullWeightGramms = preferences.getUInt("fullWeight", 16500);  // 11Kg alu bottle by default
+    SCALE = preferences.getDouble("scale", 1.f);
+    OFFSET = preferences.getULong("offset", 0);
+    LOG_INFO_F("[SCALE] Successfully recovered data. Scale = %.8f with offset %d\n", SCALE, OFFSET);
+    emptyWeightGramms = preferences.getUInt("emptyWeight", 5500); // 11Kg alu bottle weights 5.5Kg empty
+    fullWeightGramms = preferences.getUInt("fullWeight", 16500);  // 5.5Kg alu bottle plus 11Kg gas
     LOG_INFO_F("[SCALE] Bottle configuration: Empty = %dg Full = %dg\n", emptyWeightGramms, fullWeightGramms);
-    hx711.set_scale(scale);
-    hx711.set_offset(tare);
+    hx711.set_scale(SCALE);
+    hx711.set_offset(OFFSET);
     preferences.end();
   }
 }
@@ -142,6 +160,11 @@ uint32_t SCALEMANAGER::getSensorMedianValue(bool cached) {
   if (hx711.wait_ready_retry(100, 5)) {
     //lastMedian = (int)floor(hx711.get_median_value(10) / 1000);
     lastMedian = hx711.get_units(10);
+    // LOG_INFO_F("getSensorMedianValue(cached = %s) returned lastMedian = %d\n", cached ? "true" : "false", lastMedian);
+    if (lastMedian == UINT64_MAX) {
+      LOG_INFO_LN(F("[SCALE] Detected UINT64_MAX value, ignoring!"));
+      lastMedian = 0;
+    }
     return lastMedian;
   } else {
     LOG_INFO_LN(F("[SCALE] Unable to communicate with the HX711 modul."));
@@ -150,9 +173,10 @@ uint32_t SCALEMANAGER::getSensorMedianValue(bool cached) {
 }
 
 uint8_t SCALEMANAGER::calculateLevel() {
-  if (isConfigured() && lastMedian > fullWeightGramms*4) {
-    LOG_INFO_LN(F("[SCALE] Very high reading from hx711, possibly incorrect. Set to 0 to prevent underflow issues"));
-    lastMedian = 0;
+  if (isConfigured() && lastMedian > fullWeightGramms*10) {
+    LOG_INFO_F("[SCALE] Abnormal reading from hx711 detected (lastMedian = %d), possibly incorrect. Set to 0 to prevent underflow issues.\n",
+      lastMedian = 0
+    );
   }
   currentGasWeightGramms = (lastMedian > emptyWeightGramms) ? lastMedian - emptyWeightGramms : 0;
   uint32_t maxGasWeight = fullWeightGramms - emptyWeightGramms;
@@ -166,14 +190,19 @@ uint8_t SCALEMANAGER::calculateLevel() {
 }
 
 void SCALEMANAGER::emptyScale() {
-  LOG_INFO_LN(F("[SCALE] Resetting scale"));
-  hx711.set_scale();
-  LOG_INFO_LN(F("[SCALE] Resetting tare"));
+  SCALE = 1.f;
+  OFFSET = 0;
+  hx711.set_scale(SCALE);
   hx711.tare();
+  LOG_INFO_F("[SCALE] Resetting scale to %.8f with new offset set to %d\n",
+    hx711.get_scale(),
+    hx711.get_offset()
+  );
 }
 
 bool SCALEMANAGER::applyCalibrateWeight(uint32_t weight) {
-  hx711.set_scale(hx711.get_units(10) / weight);
+  SCALE = hx711.get_units(10) / weight;
+  hx711.set_scale(SCALE);
   return writeToNVS();
 }
 
