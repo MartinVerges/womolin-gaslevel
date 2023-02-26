@@ -57,7 +57,7 @@ with open(args['file']) as csvfile:
 
 with open(os.path.dirname(__file__) + '/webinstaller-manifest-template.json') as user_file:
   manifest = json.load(user_file)
-  manifest['name'] = args['project']
+  manifest['name'] = args['name']
   manifest['version'] = currentVersion['revision']
   manifest['builds'][0]['parts'] = data
   # print(json.dumps(manifest, indent=2))
