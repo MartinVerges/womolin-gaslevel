@@ -18,7 +18,9 @@ with open(currentVersionFile) as versionFile:
   currentVersion = json.load(versionFile)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-p', '--project', help="Name of the Project",
+parser.add_argument('-p', '--project', help="Project folder",
+                    action='store', metavar='<folder>', required=True)
+parser.add_argument('-n', '--name', help="Name for the output manifest file",
                     action='store', metavar='<name>', required=True)
 parser.add_argument('-b', '--bucket', help="Name of the S3 Bucket where the files are located",
                     action='store', metavar='<bucket>', default='webinstaller')
@@ -29,7 +31,8 @@ parser.add_argument('-f', '--file', help="Partition layout csv file",
                     action='store', metavar='partitions.csv', required=True)
 parser.add_argument('-o', '--outfile', help="Filename of the output manifest file",
                     action='store', metavar='<filename>', default="manifest.json")
-                
+parser.add_argument('-t', '--type', help="Manifest including all partitions (full) or just firmware/littlefs (update)",
+                    action='store', metavar='<full|update>', default='update')
 args = vars(parser.parse_args())
 
 prefix = '%s/%s/%s/' % (args['url'], args['bucket'], args['project'])
@@ -38,7 +41,7 @@ data = [
     { "path": prefix + "bootloader_dio_80m.bin", "offset": 4096 },
     { "path": prefix + "partitions.bin", "offset": 32768 },
     { "path": prefix + "boot_app0.bin", "offset": 57344 },
-]
+] if args['type'] == 'full' else []
 
 with open(args['file']) as csvfile:
     reader = csv.DictReader(csvfile, delimiter=',', skipinitialspace=True)
