@@ -72,12 +72,11 @@ Adafruit_Sensor *bmp280_temp = bmp280.getTemperatureSensor();
 Adafruit_Sensor *bmp280_pressure = bmp280.getPressureSensor();
 
 /*
+// Experimental to connect the weight module via 4 cables intead of 5
 #include <OneWire.h>
 #include <DallasTemperature.h>
-
-OneWire oneWire(25); // 27 or 23
+OneWire oneWire(32); // 32, 27, or 23
 DallasTemperature sensors(&oneWire);
-
 */
 WebSerialClass WebSerial;
 
@@ -173,10 +172,9 @@ void initWifiAndServices() {
 }
 
 void setup() {
-/*
-  pinMode(23, OUTPUT);
-  digitalWrite(23, LOW);
-*/
+//  pinMode(23, OUTPUT);
+//  digitalWrite(23, LOW);
+
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   LOG_INFO_LN(F("\n\n==== starting ESP32 setup() ===="));
@@ -258,17 +256,6 @@ void setup() {
       enableWifi = true;
     }
   }
-/*
-  digitalWrite(23, LOW);
-  sensors.begin();
-  Serial.print("Sensor count = ");
-  Serial.println(sensors.getDS18Count());
-  sensors.requestTemperatures(); 
-  float temperatureC = sensors.getTempCByIndex(0);
-  Serial.print(temperatureC);
-  Serial.println("ºC");
-  digitalWrite(23, HIGH);
-  */
 }
 
 // Soft reset the ESP to start with setup() again, but without loosing RTC_DATA as it would be with ESP.reset()
@@ -308,7 +295,11 @@ void loop() {
     }
   }
 
-  for (uint8_t i=0; i < LEVELMANAGERS; i++) LevelManagers[i]->loop();
+  // Update values from HX711
+  for (uint8_t i=0; i < LEVELMANAGERS; i++) {
+    // LevelManagers[i]->initHX711();
+    LevelManagers[i]->loop();
+  }
 
   // run regular operation
   if (runtime() - Timing.lastStatusUpdate > Timing.statusUpdateInterval) {
@@ -336,6 +327,7 @@ void loop() {
     }
 /*
     digitalWrite(23, LOW);
+    sensors.begin();
     sensors.requestTemperatures(); 
     float temperatureC = sensors.getTempCByIndex(0);
     Serial.print(temperatureC);
@@ -345,8 +337,8 @@ void loop() {
 */
     for (uint8_t i=0; i < LEVELMANAGERS; i++) {
       JsonObject jsonNestedObject = jsonArray.createNestedObject();
-      //LevelManagers[i]->initHX711();
-      //delay(100);
+      // LevelManagers[i]->initHX711();
+
       jsonNestedObject["id"] = i;
       jsonNestedObject["airPressure"] = pressure;
       jsonNestedObject["temperature"] = temperature;
