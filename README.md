@@ -50,7 +50,7 @@ To build this sensor yourself, you need:
  * 1x Pushbutton (~0.15€)
  * 1x Small 12V to 3.3V power supply (~1€)
  * 2x Wood/Plasic/Metal plate in the size of your needs
- * 8x 3D printed sensor holder [CAD](https://cad.onshape.com/documents/3d3042e5cf8f3498753a8372/w/5c6080c6f47943c52b1afecc/e/5ba80aad4182341acda3708c?renderMode=0&uiState=62c9947f0bab70377a474cf9)
+ * 8x [3D printed sensor holder](https://womolin.de/produkt/4x-waegezellen-halterung/) [CAD drawing](https://cad.onshape.com/documents/3d3042e5cf8f3498753a8372/w/5c6080c6f47943c52b1afecc/e/5ba80aad4182341acda3708c?renderMode=0&uiState=62c9947f0bab70377a474cf9)
  
  In addition you need some few small cables and soldering equipment to build the circuit.
 
