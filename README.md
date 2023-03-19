@@ -43,8 +43,10 @@ The following aspects are the focus of this project:
 
 To build this sensor yourself, you need:
 
- * 1x ESP32 Wemos D1 mini (around 2€)
- * 1x 2x HX711 with 8x Half Bridge Load Cell (13€ https://www.amazon.de/gp/product/B09H6SLXZ6/)
+ * 1x [ESP32 Wemos D1 mini](https://womolin.de/produkt/wemos-d1-mini-esp32/)
+ * 2x [4x Half Bridge Load Cell](https://womolin.de/produkt/4x-50-kg-waegezelle/)
+ * 2x [HX711 Breakout board](https://womolin.de/produkt/hx711-breakout-board/)
+ * 1x [BMP280](https://womolin.de/produkt/bmp280-33v/)
  * 1x Pushbutton (~0.15€)
  * 1x Small 12V to 3.3V power supply (~1€)
  * 2x Wood/Plasic/Metal plate in the size of your needs
